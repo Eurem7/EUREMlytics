@@ -110,12 +110,12 @@ body {
   text-decoration: none;
 }
 .logo-mark {
-  width: 26px; height: 26px;
+  width: 36px; height: 26px;
   background: var(--text);
   border-radius: 6px;
   display: flex; align-items: center; justify-content: center;
-  font-family: var(--mono); font-size: 0.6rem; font-weight: 600;
-  color: #fff; letter-spacing: -0.5px;
+  font-family: var(--mono); font-size: 0.55rem; font-weight: 700;
+  color: #fff; letter-spacing: 0.5px;
   flex-shrink: 0;
 }
 .logo-text {
@@ -801,8 +801,8 @@ function Topbar({ step, sessionId }) {
   return (
     <div className="topbar">
       <div className="topbar-logo">
-        <div className="logo-mark">DQ</div>
-        <span className="logo-text">DataQuality<span>.app</span></span>
+        <div className="logo-mark">OXD</div>
+        <span className="logo-text">Oxdemi<span>.io</span></span>
       </div>
       <div className="topbar-divider" />
       <div className="step-track">
@@ -857,12 +857,12 @@ function UploadScreen({ onUploaded }) {
       <div className="upload-layout">
         {/* Left — hero text */}
         <div className="upload-hero-text anim-fade-up">
-          <div className="upload-eyebrow">Data Quality Engine</div>
+          <div className="upload-eyebrow">Data Cleaning Engine</div>
           <h1 className="upload-h1">
-            Turn messy data<br/>into <em>clean</em> data.
+            Raw in.<br/><em>Clean out.</em>
           </h1>
           <p className="upload-sub">
-            Upload any CSV or Excel file. Our engine normalises, imputes, deduplicates, and scores every column — in seconds.
+            Upload any CSV or Excel file. Oxdemi normalises, imputes, deduplicates, and scores every column — instantly.
           </p>
           <div className="upload-features">
             {[
@@ -1029,7 +1029,7 @@ function Dashboard({ result, sessionId, onViewReport }) {
             <div className="dash-eyebrow-dot" />
             Pipeline complete
           </div>
-          <div className="dash-title">Results Dashboard</div>
+          <div className="dash-title">Clean Results</div>
           <div className="dash-meta">
             {origShape[0].toLocaleString()} → {cleanShape[0].toLocaleString()} rows ·
             {' '}{origShape[1]} → {cleanShape[1]} columns ·
