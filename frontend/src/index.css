@@ -1,0 +1,8 @@
+/* index.css — base reset only, all design tokens live in App.jsx */
+*, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+html { scroll-behavior: smooth; height: 100%; }
+body { min-height: 100%; }
+#root { min-height: 100vh; display: flex; flex-direction: column; }
+img, svg { display: block; max-width: 100%; }
+button { font-family: inherit; }
+a { color: inherit; }
