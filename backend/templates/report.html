@@ -3,1064 +3,448 @@
 <head>
   <meta charset="UTF-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1.0"/>
-  <title>Data Quality Report</title>
+  <title>Oxdemi — Quality Report</title>
   <link rel="preconnect" href="https://fonts.googleapis.com">
-  <link href="https://fonts.googleapis.com/css2?family=IBM+Plex+Mono:ital,wght@0,400;0,600;1,400&family=Space+Grotesk:wght@300;400;600;700&display=swap" rel="stylesheet">
+  <link href="https://fonts.googleapis.com/css2?family=DM+Sans:wght@300;400;500;600;700&family=JetBrains+Mono:wght@400;500;600&display=swap" rel="stylesheet">
   <style>
-    /* ── Design tokens ── */
     :root {
-      --bg:          #080b0f;
-      --bg2:         #0d1117;
-      --surface:     #111720;
-      --surface2:    #161d2a;
-      --border:      #1e2a3a;
-      --border2:     #243040;
-      --text:        #d4dce8;
-      --text2:       #8899aa;
-      --muted:       #4a5a6a;
-      --accent:      #00d4ff;
-      --accent-dim:  rgba(0,212,255,0.08);
-      --green:       #00e5a0;
-      --green-dim:   rgba(0,229,160,0.08);
-      --warn:        #ffb020;
-      --warn-dim:    rgba(255,176,32,0.08);
-      --red:         #ff5060;
-      --red-dim:     rgba(255,80,96,0.08);
-      --mono:        'IBM Plex Mono', monospace;
-      --sans:        'Space Grotesk', sans-serif;
-      --radius:      6px;
+      --bg:        #f5f5f3;
+      --bg2:       #efefec;
+      --surface:   #ffffff;
+      --surface2:  #fafaf8;
+      --border:    rgba(0,0,0,0.08);
+      --border2:   rgba(0,0,0,0.14);
+      --text:      #0f0f0e;
+      --text2:     #555550;
+      --text3:     #8c8c86;
+      --accent:    #1a6bff;
+      --green:     #00875a;
+      --green-bg:  #f0faf5;
+      --warn:      #b45309;
+      --warn-bg:   #fefce8;
+      --red:       #c0392b;
+      --red-bg:    #fff5f5;
+      --purple:    #6d28d9;
+      --mono:      'JetBrains Mono', monospace;
+      --sans:      'DM Sans', sans-serif;
+      --r:         6px;
+      --r2:        10px;
+      --sh:        0 1px 2px rgba(0,0,0,0.06), 0 2px 8px rgba(0,0,0,0.04);
     }
 
-    *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
-
-    html { scroll-behavior: smooth; }
+    * { box-sizing: border-box; margin: 0; padding: 0; }
 
     body {
       background: var(--bg);
       color: var(--text);
       font-family: var(--sans);
       font-size: 14px;
-      line-height: 1.65;
-      min-height: 100vh;
+      line-height: 1.5;
+      -webkit-font-smoothing: antialiased;
     }
 
-    /* ────────────────────────────────
-       Scrollbar
-    ──────────────────────────────── */
-    ::-webkit-scrollbar { width: 6px; height: 6px; }
-    ::-webkit-scrollbar-track { background: var(--bg2); }
-    ::-webkit-scrollbar-thumb { background: var(--border2); border-radius: 3px; }
+    ::-webkit-scrollbar { width: 5px; height: 5px; }
+    ::-webkit-scrollbar-track { background: transparent; }
+    ::-webkit-scrollbar-thumb { background: var(--border2); border-radius: 10px; }
 
-    /* ────────────────────────────────
-       Top bar
-    ──────────────────────────────── */
-    .topbar {
-      position: sticky;
-      top: 0;
-      z-index: 100;
-      background: rgba(8,11,15,0.92);
+    /* Header */
+    header {
+      background: rgba(255,255,255,0.9);
       backdrop-filter: blur(12px);
-      -webkit-backdrop-filter: blur(12px);
-      border-bottom: 1px solid var(--border);
-      padding: 0 3rem;
-      height: 56px;
-      display: flex;
-      align-items: center;
-      justify-content: space-between;
-      gap: 2rem;
-    }
-    .topbar-left {
-      display: flex;
-      align-items: center;
-      gap: 1.25rem;
-    }
-    .topbar-logo {
-      font-family: var(--mono);
-      font-size: 0.78rem;
-      font-weight: 600;
-      color: var(--accent);
-      letter-spacing: 0.12em;
-      text-transform: uppercase;
-    }
-    .topbar-logo span {
-      color: var(--muted);
-      font-weight: 400;
-    }
-    .topbar-divider {
-      width: 1px;
-      height: 20px;
-      background: var(--border);
-    }
-    .topbar-meta {
-      font-family: var(--mono);
-      font-size: 0.72rem;
-      color: var(--text2);
-    }
-    .topbar-right {
-      display: flex;
-      align-items: center;
-      gap: 0.75rem;
-    }
-
-    /* ────────────────────────────────
-       Download buttons
-    ──────────────────────────────── */
-    .btn {
-      display: inline-flex;
-      align-items: center;
-      gap: 0.4rem;
-      padding: 0.4rem 0.9rem;
-      border-radius: var(--radius);
-      font-family: var(--mono);
-      font-size: 0.72rem;
-      font-weight: 600;
-      letter-spacing: 0.06em;
-      text-decoration: none;
-      cursor: pointer;
-      border: none;
-      transition: all 0.15s ease;
-    }
-    .btn-outline {
-      background: transparent;
-      border: 1px solid var(--border2);
-      color: var(--text2);
-    }
-    .btn-outline:hover {
-      border-color: var(--accent);
-      color: var(--accent);
-      background: var(--accent-dim);
-    }
-    .btn-primary {
-      background: var(--accent-dim);
-      border: 1px solid var(--accent);
-      color: var(--accent);
-    }
-    .btn-primary:hover {
-      background: var(--accent);
-      color: var(--bg);
-    }
-
-    /* ────────────────────────────────
-       Sidebar + content layout
-    ──────────────────────────────── */
-    .layout {
-      display: flex;
-      min-height: calc(100vh - 56px);
-    }
-    .sidebar {
-      width: 220px;
-      flex-shrink: 0;
-      position: sticky;
-      top: 56px;
-      height: calc(100vh - 56px);
-      overflow-y: auto;
-      border-right: 1px solid var(--border);
-      padding: 1.75rem 0;
-      background: var(--bg2);
-    }
-    .sidebar-section {
-      margin-bottom: 0.25rem;
-    }
-    .sidebar-label {
-      font-family: var(--mono);
-      font-size: 0.62rem;
-      letter-spacing: 0.18em;
-      text-transform: uppercase;
-      color: var(--muted);
-      padding: 0.5rem 1.5rem 0.25rem;
-    }
-    .sidebar-link {
-      display: block;
-      padding: 0.45rem 1.5rem;
-      font-size: 0.8rem;
-      color: var(--text2);
-      text-decoration: none;
-      transition: all 0.12s;
-      border-left: 2px solid transparent;
-    }
-    .sidebar-link:hover,
-    .sidebar-link.active {
-      color: var(--accent);
-      border-left-color: var(--accent);
-      background: var(--accent-dim);
-    }
-
-    /* ────────────────────────────────
-       Main content
-    ──────────────────────────────── */
-    .content {
-      flex: 1;
-      min-width: 0;
-      padding: 2.5rem 3rem;
-      display: flex;
-      flex-direction: column;
-      gap: 3rem;
-    }
-
-    /* ────────────────────────────────
-       Section
-    ──────────────────────────────── */
-    .section { display: flex; flex-direction: column; gap: 1.25rem; }
-    .section-header {
+      border-bottom: 1px solid var(--border2);
+      padding: 0 2.5rem;
+      height: 52px;
       display: flex;
       align-items: center;
       gap: 1rem;
+      position: sticky;
+      top: 0;
+      z-index: 100;
     }
-    .section-title {
-      font-family: var(--mono);
-      font-size: 0.68rem;
-      letter-spacing: 0.18em;
-      text-transform: uppercase;
-      color: var(--muted);
+    .logo-mark {
+      width: 36px; height: 26px;
+      background: var(--text);
+      border-radius: 6px;
+      display: flex; align-items: center; justify-content: center;
+      font-family: var(--mono); font-size: 0.55rem; font-weight: 700;
+      color: #fff; letter-spacing: 0.5px;
     }
-    .section-line {
-      flex: 1;
-      height: 1px;
-      background: var(--border);
+    .logo-text {
+      font-size: 0.88rem; font-weight: 600; letter-spacing: -0.01em;
     }
-    .section-count {
-      font-family: var(--mono);
-      font-size: 0.65rem;
-      color: var(--muted);
-      background: var(--surface);
-      border: 1px solid var(--border);
-      padding: 0.1rem 0.5rem;
-      border-radius: 3px;
+    .logo-text span { color: var(--text3); font-weight: 400; }
+    .hdr-divider { width: 1px; height: 20px; background: var(--border2); }
+    .hdr-label { font-family: var(--mono); font-size: 0.68rem; color: var(--text3); }
+    .hdr-meta {
+      margin-left: auto;
+      font-family: var(--mono); font-size: 0.65rem; color: var(--text3);
+      background: var(--bg2); border: 1px solid var(--border2);
+      padding: 0.2rem 0.65rem; border-radius: 4px;
     }
 
-    /* ────────────────────────────────
-       Stat cards
-    ──────────────────────────────── */
-    .cards {
+    /* Layout */
+    main {
+      max-width: 1100px;
+      margin: 0 auto;
+      padding: 2.5rem 2rem;
       display: grid;
-      grid-template-columns: repeat(auto-fit, minmax(150px, 1fr));
-      gap: 1px;
-      background: var(--border);
-      border: 1px solid var(--border);
-      border-radius: var(--radius);
-      overflow: hidden;
-    }
-    .card {
-      background: var(--surface);
-      padding: 1.5rem 1.75rem;
-      transition: background 0.15s;
-    }
-    .card:hover { background: var(--surface2); }
-    .card-value {
-      font-family: var(--mono);
-      font-size: 2rem;
-      font-weight: 600;
-      color: var(--accent);
-      line-height: 1;
-      letter-spacing: -0.02em;
-    }
-    .card-value.green { color: var(--green); }
-    .card-value.warn  { color: var(--warn);  }
-    .card-value.red   { color: var(--red);   }
-    .card-label {
-      font-size: 0.72rem;
-      color: var(--text2);
-      margin-top: 0.5rem;
-      text-transform: uppercase;
-      letter-spacing: 0.08em;
-      font-weight: 500;
-    }
-    .card-sub {
-      font-family: var(--mono);
-      font-size: 0.65rem;
-      color: var(--muted);
-      margin-top: 0.25rem;
+      gap: 2.5rem;
     }
 
-    /* ────────────────────────────────
-       Pipeline summary bar
-    ──────────────────────────────── */
-    .pipeline-bar {
-      display: flex;
-      align-items: stretch;
-      gap: 1px;
-      background: var(--border);
-      border: 1px solid var(--border);
-      border-radius: var(--radius);
-      overflow: hidden;
-      font-family: var(--mono);
-      font-size: 0.72rem;
+    /* Section */
+    .section-head {
+      display: flex; align-items: center; gap: 0.75rem; margin-bottom: 1rem;
     }
-    .pipeline-step {
-      flex: 1;
-      background: var(--surface);
-      padding: 0.75rem 1rem;
-      display: flex;
-      flex-direction: column;
-      gap: 0.2rem;
-      transition: background 0.15s;
+    .section-hed {
+      font-size: 0.68rem; font-weight: 700; text-transform: uppercase;
+      letter-spacing: 0.1em; color: var(--text3); white-space: nowrap;
     }
-    .pipeline-step:hover { background: var(--surface2); }
-    .pipeline-step-num {
-      color: var(--muted);
-      font-size: 0.62rem;
-    }
-    .pipeline-step-name { color: var(--text); font-weight: 600; }
-    .pipeline-step-detail { color: var(--text2); font-size: 0.65rem; }
+    .section-rule { flex: 1; height: 1px; background: var(--border2); }
+    .section-count { font-family: var(--mono); font-size: 0.65rem; color: var(--text3); white-space: nowrap; }
 
-    /* ────────────────────────────────
-       Tables
-    ──────────────────────────────── */
-    .table-wrap {
-      overflow-x: auto;
-      border: 1px solid var(--border);
-      border-radius: var(--radius);
-    }
-    table {
-      width: 100%;
-      border-collapse: collapse;
-      font-family: var(--mono);
-      font-size: 0.78rem;
-    }
-    thead { position: sticky; top: 0; z-index: 1; }
-    th {
-      background: var(--surface2);
-      color: var(--text2);
-      font-weight: 500;
-      letter-spacing: 0.08em;
-      text-transform: uppercase;
-      font-size: 0.68rem;
-      padding: 0.7rem 1.1rem;
-      text-align: left;
-      border-bottom: 1px solid var(--border);
-      white-space: nowrap;
-    }
-    td {
-      padding: 0.6rem 1.1rem;
-      border-bottom: 1px solid var(--border);
-      color: var(--text);
-      vertical-align: middle;
-    }
-    tbody tr:last-child td { border-bottom: none; }
-    tbody tr:hover td { background: var(--surface2); }
-
-    /* ────────────────────────────────
-       Badges
-    ──────────────────────────────── */
-    .badge {
-      display: inline-flex;
-      align-items: center;
-      padding: 0.15rem 0.55rem;
-      border-radius: 3px;
-      font-family: var(--mono);
-      font-size: 0.65rem;
-      font-weight: 600;
-      letter-spacing: 0.06em;
-      white-space: nowrap;
-    }
-    .badge-good    { background: var(--green-dim); color: var(--green); border: 1px solid rgba(0,229,160,0.2); }
-    .badge-warn    { background: var(--warn-dim);  color: var(--warn);  border: 1px solid rgba(255,176,32,0.2); }
-    .badge-bad     { background: var(--red-dim);   color: var(--red);   border: 1px solid rgba(255,80,96,0.2); }
-    .badge-neutral { background: var(--surface2);  color: var(--text2); border: 1px solid var(--border2); }
-    .badge-accent  { background: var(--accent-dim);color: var(--accent);border: 1px solid rgba(0,212,255,0.2); }
-
-    /* ────────────────────────────────
-       Quality score bar
-    ──────────────────────────────── */
-    .score-wrap {
-      display: flex;
-      align-items: center;
-      gap: 0.75rem;
-    }
-    .score-bar-bg {
-      flex: 1;
-      height: 5px;
-      background: var(--border);
-      border-radius: 3px;
-      overflow: hidden;
-      min-width: 80px;
-    }
-    .score-bar-fill {
-      height: 100%;
-      border-radius: 3px;
-      transition: width 0.3s ease;
-    }
-    .score-bar-fill.good { background: var(--green); }
-    .score-bar-fill.warn { background: var(--warn);  }
-    .score-bar-fill.bad  { background: var(--red);   }
-    .score-num {
-      font-family: var(--mono);
-      font-size: 0.72rem;
-      color: var(--text2);
-      min-width: 36px;
-      text-align: right;
-    }
-
-    /* ────────────────────────────────
-       Missing value bar
-    ──────────────────────────────── */
-    .missing-bar-bg {
-      display: inline-block;
-      width: 100px;
-      height: 5px;
-      background: var(--border);
-      border-radius: 3px;
-      overflow: hidden;
-      vertical-align: middle;
-    }
-    .missing-bar-fill {
-      display: block;
-      height: 100%;
-      background: var(--warn);
-      border-radius: 3px;
-    }
-
-    /* ────────────────────────────────
-       Correlation matrix
-    ──────────────────────────────── */
-    .corr-cell {
-      text-align: center;
-      font-size: 0.72rem;
-      padding: 0.5rem 0.75rem;
-    }
-    .corr-diag     { color: var(--muted) !important; }
-    .corr-high-pos { color: var(--green) !important; font-weight: 600; }
-    .corr-high-neg { color: var(--red)   !important; font-weight: 600; }
-    .corr-mid      { color: var(--warn)  !important; }
-
-    /* ────────────────────────────────
-       Distribution pills
-    ──────────────────────────────── */
-    .dist-row {
-      display: flex;
-      align-items: center;
-      gap: 0.5rem;
-      flex-wrap: wrap;
-    }
-    .dist-pill {
-      font-family: var(--mono);
-      font-size: 0.68rem;
-      padding: 0.15rem 0.55rem;
-      border-radius: 3px;
+    /* Stat strip */
+    .stats-row {
+      display: grid;
+      grid-template-columns: repeat(auto-fit, minmax(140px, 1fr));
+      gap: 1px; background: var(--border2);
       border: 1px solid var(--border2);
-      color: var(--text2);
-      background: var(--surface);
+      border-radius: var(--r2); overflow: hidden; box-shadow: var(--sh);
     }
-    .dist-pill span { color: var(--text); font-weight: 600; }
-
-    /* ────────────────────────────────
-       Value counts chart (CSS only)
-    ──────────────────────────────── */
-    .vchart { display: flex; flex-direction: column; gap: 0.35rem; }
-    .vchart-row {
-      display: grid;
-      grid-template-columns: 140px 1fr 50px;
-      align-items: center;
-      gap: 0.75rem;
+    .stat-card { background: var(--surface); padding: 1.25rem 1.5rem; }
+    .stat-card .value {
+      font-family: var(--mono); font-size: 1.8rem; font-weight: 600;
+      color: var(--text); line-height: 1; letter-spacing: -0.03em;
     }
-    .vchart-label {
-      font-family: var(--mono);
-      font-size: 0.7rem;
-      color: var(--text2);
-      overflow: hidden;
-      text-overflow: ellipsis;
-      white-space: nowrap;
-    }
-    .vchart-bar-bg {
-      height: 18px;
-      background: var(--surface);
-      border-radius: 3px;
-      overflow: hidden;
-    }
-    .vchart-bar-fill {
-      height: 100%;
-      background: var(--accent);
-      opacity: 0.5;
-      border-radius: 3px;
-      transition: opacity 0.15s;
-    }
-    .vchart-bar-fill:hover { opacity: 0.85; }
-    .vchart-count {
-      font-family: var(--mono);
-      font-size: 0.68rem;
-      color: var(--muted);
-      text-align: right;
+    .stat-card .value.blue   { color: var(--accent); }
+    .stat-card .value.green  { color: var(--green); }
+    .stat-card .value.purple { color: var(--purple); }
+    .stat-card .label {
+      font-size: 0.67rem; color: var(--text3); margin-top: 0.4rem;
+      text-transform: uppercase; letter-spacing: 0.08em; font-weight: 600;
     }
 
-    /* ────────────────────────────────
-       Audit log
-    ──────────────────────────────── */
-    .audit-log {
-      border: 1px solid var(--border);
-      border-radius: var(--radius);
-      overflow: hidden;
-      max-height: 420px;
-      overflow-y: auto;
+    /* Tables */
+    .table-wrap {
+      background: var(--surface); border: 1px solid var(--border2);
+      border-radius: var(--r2); overflow: hidden; overflow-x: auto; box-shadow: var(--sh);
     }
-    .audit-entry {
-      display: grid;
-      grid-template-columns: 160px 180px 1fr;
-      gap: 0;
-      border-bottom: 1px solid var(--border);
-      font-family: var(--mono);
-      font-size: 0.72rem;
-      transition: background 0.1s;
+    table { width: 100%; border-collapse: collapse; font-size: 0.78rem; }
+    th {
+      background: var(--bg); color: var(--text3); font-weight: 600;
+      text-transform: uppercase; letter-spacing: 0.08em; font-size: 0.62rem;
+      padding: 0.6rem 1rem; text-align: left;
+      border-bottom: 1px solid var(--border2); white-space: nowrap;
     }
-    .audit-entry:last-child { border-bottom: none; }
-    .audit-entry:hover { background: var(--surface2); }
-    .audit-cell {
-      padding: 0.55rem 1rem;
-      display: flex;
-      align-items: center;
+    td { padding: 0.6rem 1rem; border-bottom: 1px solid var(--border); vertical-align: middle; }
+    tr:last-child td { border-bottom: none; }
+    tr:hover td { background: var(--surface2); }
+    .td-mono { font-family: var(--mono); font-size: 0.72rem; font-weight: 500; }
+    .td-dim  { color: var(--text3); font-family: var(--mono); font-size: 0.7rem; }
+
+    /* Badges */
+    .badge {
+      display: inline-flex; align-items: center;
+      padding: 0.15rem 0.55rem; border-radius: 4px;
+      font-size: 0.6rem; font-weight: 700; letter-spacing: 0.06em;
+      font-family: var(--mono); text-transform: uppercase;
+    }
+    .badge.good { background: var(--green-bg); color: var(--green); border: 1px solid rgba(0,135,90,0.15); }
+    .badge.warn { background: var(--warn-bg);  color: var(--warn);  border: 1px solid rgba(180,83,9,0.15); }
+    .badge.bad  { background: var(--red-bg);   color: var(--red);   border: 1px solid rgba(192,57,43,0.15); }
+    .badge.type { background: var(--bg2); color: var(--text3); border: 1px solid var(--border2); }
+
+    /* Score bar */
+    .sbar-wrap { display: flex; align-items: center; gap: 0.6rem; }
+    .sbar { flex: 1; height: 4px; background: var(--bg2); border-radius: 2px; overflow: hidden; min-width: 60px; }
+    .sbar-fill { height: 100%; border-radius: 2px; }
+    .sbar-fill.good { background: var(--green); }
+    .sbar-fill.warn { background: var(--warn); }
+    .sbar-fill.bad  { background: var(--red); }
+    .sbar-num { font-family: var(--mono); font-size: 0.65rem; color: var(--text3); min-width: 28px; text-align: right; }
+
+    /* Missing bar */
+    .missing-bar-wrap {
+      height: 4px; background: var(--bg2); border-radius: 2px;
+      overflow: hidden; width: 100px; display: inline-block; vertical-align: middle;
+    }
+    .missing-bar { height: 100%; background: var(--warn); border-radius: 2px; }
+
+    /* Audit log */
+    .log-list {
+      background: var(--surface); border: 1px solid var(--border2);
+      border-radius: var(--r2); overflow: hidden;
+      max-height: 380px; overflow-y: auto; box-shadow: var(--sh);
+    }
+    .log-head {
+      display: grid; grid-template-columns: 64px 210px 1fr;
+      background: var(--bg); border-bottom: 1px solid var(--border2);
+    }
+    .log-hcell {
+      padding: 0.5rem 0.85rem; font-size: 0.6rem; font-weight: 700;
+      text-transform: uppercase; letter-spacing: 0.08em; color: var(--text3);
       border-right: 1px solid var(--border);
     }
-    .audit-cell:last-child { border-right: none; }
-    .audit-ts    { color: var(--muted); font-size: 0.65rem; }
-    .audit-col   { color: var(--accent); overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
-    .audit-action { color: var(--text); font-weight: 600; }
-    .audit-detail { color: var(--text2); flex-wrap: wrap; gap: 0.75rem; display: flex; align-items: center; }
-    .audit-kv {
-      display: inline-flex;
-      gap: 0.25rem;
-      font-size: 0.65rem;
+    .log-hcell:last-child { border-right: none; }
+    .log-entry {
+      display: grid; grid-template-columns: 64px 210px 1fr;
+      border-bottom: 1px solid var(--border);
+      font-family: var(--mono); font-size: 0.7rem;
     }
-    .audit-kv-key  { color: var(--muted); }
-    .audit-kv-val  { color: var(--text2); }
-
-    /* Audit action colour coding */
-    .action-drop     { color: var(--red)   !important; }
-    .action-impute   { color: var(--warn)  !important; }
-    .action-outlier  { color: #b388ff      !important; }
-    .action-pipeline { color: var(--green) !important; }
-    .action-normalise{ color: var(--accent)!important; }
-
-    /* ────────────────────────────────
-       Warning callout
-    ──────────────────────────────── */
-    .callout {
-      display: flex;
-      gap: 0.75rem;
-      align-items: flex-start;
-      padding: 0.9rem 1.1rem;
-      border-radius: var(--radius);
-      border: 1px solid var(--border2);
-      background: var(--surface);
-      font-size: 0.8rem;
+    .log-entry:last-child { border-bottom: none; }
+    .log-entry:hover { background: var(--surface2); }
+    .log-cell {
+      padding: 0.5rem 0.85rem; display: flex; align-items: center;
+      border-right: 1px solid var(--border); gap: 0.4rem;
     }
-    .callout-warn  { border-color: rgba(255,176,32,0.3); background: rgba(255,176,32,0.04); }
-    .callout-icon  { font-size: 0.9rem; flex-shrink: 0; margin-top: 0.1rem; }
-    .callout-title { font-weight: 600; color: var(--warn); margin-bottom: 0.2rem; font-size: 0.78rem; }
-    .callout-body  { color: var(--text2); line-height: 1.5; }
+    .log-cell:last-child { border-right: none; }
+    .log-ts { color: var(--text3); font-size: 0.62rem; }
+    .log-action { font-weight: 600; font-size: 0.68rem; }
+    .log-action.drop     { color: var(--red); }
+    .log-action.impute   { color: var(--warn); }
+    .log-action.outlier  { color: var(--purple); }
+    .log-action.pipeline { color: var(--green); }
+    .log-action.id       { color: var(--accent); }
+    .log-col  { color: var(--text3); font-size: 0.62rem; }
+    .log-detail { color: var(--text2); flex-wrap: wrap; gap: 0.5rem; display: flex; font-size: 0.65rem; }
+    .kv { display: inline-flex; gap: 0.25rem; }
+    .kv-k { color: var(--text3); }
+    .kv-v { color: var(--text); }
 
-    /* ────────────────────────────────
-       Responsive
-    ──────────────────────────────── */
-    @media (max-width: 900px) {
-      .sidebar { display: none; }
-      .topbar  { padding: 0 1.5rem; }
-      .content { padding: 1.5rem; }
-      .cards   { grid-template-columns: repeat(2, 1fr); }
-      .audit-entry { grid-template-columns: 1fr; }
-      .audit-cell { border-right: none; border-bottom: 1px solid var(--border); }
+    /* Correlation */
+    .corr-cell { text-align: center; font-family: var(--mono); font-size: 0.7rem; }
+    .corr-high-pos { color: var(--green); font-weight: 600; }
+    .corr-high-neg { color: var(--red); font-weight: 600; }
+    .corr-diag     { color: var(--text3); }
+
+    /* Preview table */
+    .preview-table th { background: var(--bg2); font-size: 0.6rem; }
+    .preview-table td { font-family: var(--mono); font-size: 0.7rem; color: var(--text2); }
+
+    /* Footer */
+    footer {
+      border-top: 1px solid var(--border2);
+      padding: 1.5rem 2rem;
+      text-align: center;
+      font-size: 0.72rem;
+      color: var(--text3);
+      font-family: var(--mono);
+    }
+    footer strong { color: var(--text); }
+
+    @media (max-width: 640px) {
+      header { padding: 0 1rem; }
+      main { padding: 1.5rem 1rem; }
+      .log-head, .log-entry { grid-template-columns: 1fr; }
+      .log-hcell, .log-cell { border-right: none; border-bottom: 1px solid var(--border); }
+      .log-hcell:last-child, .log-cell:last-child { border-bottom: none; }
     }
   </style>
 </head>
 <body>
 
-{# ── Helpers ── #}
-{# Classify quality score into css tier #}
-{%- macro score_class(s) -%}
-  {%- if s >= 0.85 -%}good{%- elif s >= 0.60 -%}warn{%- else -%}bad{%- endif -%}
-{%- endmacro -%}
+<header>
+  <div class="logo-mark">OXD</div>
+  <span class="logo-text">Oxdemi<span>.io</span></span>
+  <div class="hdr-divider"></div>
+  <span class="hdr-label">Quality Report</span>
+  <span class="hdr-meta">{{ shape[0] }} rows · {{ shape[1] }} columns</span>
+</header>
 
-{# Classify audit action into colour tier #}
-{%- macro action_class(a) -%}
-  {%- if 'drop' in a or 'remov' in a -%}action-drop
-  {%- elif 'impute' in a or 'fill' in a -%}action-impute
-  {%- elif 'outlier' in a -%}action-outlier
-  {%- elif 'pipeline' in a or 'complete' in a or 'started' in a -%}action-pipeline
-  {%- else -%}action-normalise
-  {%- endif -%}
-{%- endmacro -%}
+<main>
 
-{# ── Counts ── #}
-{%- set n_good    = column_quality | selectattr("css_class", "equalto", "good") | list | length -%}
-{%- set n_warn    = column_quality | selectattr("css_class", "equalto", "warn") | list | length -%}
-{%- set n_bad     = column_quality | selectattr("css_class", "equalto", "bad")  | list | length -%}
-{%- set n_dropped = column_quality | selectattr("dropped", "equalto", true)     | list | length -%}
-{%- set rows_in   = original_shape[0] -%}
-{%- set rows_out  = shape[0] -%}
-{%- set cols_in   = original_shape[1] -%}
-{%- set cols_out  = shape[1] -%}
-
-<!-- ── Top bar ── -->
-<div class="topbar">
-  <div class="topbar-left">
-    <div class="topbar-logo">DataQuality<span>.report</span></div>
-    <div class="topbar-divider"></div>
-    <div class="topbar-meta">{{ rows_out }} rows · {{ cols_out }} columns · {{ audit_log | length }} actions</div>
-  </div>
-  <div class="topbar-right">
-    <a href="/download/csv" class="btn btn-outline">↓ CSV</a>
-    <a href="/download/report" class="btn btn-primary">↓ PDF Report</a>
-  </div>
-</div>
-
-<div class="layout">
-
-  <!-- ── Sidebar nav ── -->
-  <nav class="sidebar">
-    <div class="sidebar-section">
-      <div class="sidebar-label">Report</div>
-      <a href="#overview"      class="sidebar-link active">Overview</a>
-      <a href="#pipeline"      class="sidebar-link">Pipeline</a>
+  <!-- Overview -->
+  <section>
+    <div class="section-head">
+      <span class="section-hed">Overview</span>
+      <span class="section-rule"></span>
     </div>
-    <div class="sidebar-section">
-      <div class="sidebar-label">Quality</div>
-      <a href="#column-quality" class="sidebar-link">Column Quality</a>
-      <a href="#missing"        class="sidebar-link">Missing Values</a>
+    <div class="stats-row">
+      <div class="stat-card">
+        <div class="value blue">{{ shape[0] }}</div>
+        <div class="label">Total Rows</div>
+      </div>
+      <div class="stat-card">
+        <div class="value">{{ shape[1] }}</div>
+        <div class="label">Columns</div>
+      </div>
+      <div class="stat-card">
+        <div class="value green">{{ column_quality | selectattr("css_class", "equalto", "good") | list | length }}</div>
+        <div class="label">High Quality</div>
+      </div>
+      <div class="stat-card">
+        <div class="value">{{ missing_values | length }}</div>
+        <div class="label">Cols w/ Missing</div>
+      </div>
+      <div class="stat-card">
+        <div class="value purple">{{ audit_log | length }}</div>
+        <div class="label">Actions Taken</div>
+      </div>
     </div>
-    <div class="sidebar-section">
-      <div class="sidebar-label">Analysis</div>
-      <a href="#distributions"  class="sidebar-link">Distributions</a>
-      <a href="#correlations"   class="sidebar-link">Correlations</a>
-      <a href="#categories"     class="sidebar-link">Categories</a>
+  </section>
+
+  <!-- Column Quality -->
+  <section>
+    <div class="section-head">
+      <span class="section-hed">Column Quality</span>
+      <span class="section-rule"></span>
+      <span class="section-count">{{ column_quality | length }} columns</span>
     </div>
-    <div class="sidebar-section">
-      <div class="sidebar-label">Data</div>
-      <a href="#preview"   class="sidebar-link">Data Preview</a>
-      <a href="#audit-log" class="sidebar-link">Audit Log</a>
-    </div>
-  </nav>
-
-  <!-- ── Main content ── -->
-  <main class="content">
-
-    <!-- ── 1. Overview ── -->
-    <section class="section" id="overview">
-      <div class="section-header">
-        <span class="section-title">01 · Overview</span>
-        <span class="section-line"></span>
-      </div>
-
-      <div class="cards">
-        <div class="card">
-          <div class="card-value">{{ rows_out }}</div>
-          <div class="card-label">Clean Rows</div>
-          <div class="card-sub">from {{ rows_in }} original</div>
-        </div>
-        <div class="card">
-          <div class="card-value">{{ cols_out }}</div>
-          <div class="card-label">Columns</div>
-          <div class="card-sub">{{ cols_in - cols_out }} dropped</div>
-        </div>
-        <div class="card">
-          <div class="card-value green">{{ n_good }}</div>
-          <div class="card-label">High Quality</div>
-          <div class="card-sub">score ≥ 0.85</div>
-        </div>
-        <div class="card">
-          <div class="card-value warn">{{ n_warn }}</div>
-          <div class="card-label">Needs Review</div>
-          <div class="card-sub">score 0.60–0.84</div>
-        </div>
-        <div class="card">
-          <div class="card-value red">{{ n_bad }}</div>
-          <div class="card-label">Low Quality</div>
-          <div class="card-sub">score &lt; 0.60</div>
-        </div>
-        <div class="card">
-          <div class="card-value">{{ rows_in - rows_out }}</div>
-          <div class="card-label">Rows Removed</div>
-          <div class="card-sub">dupes + outliers</div>
-        </div>
-      </div>
-
-      {# High cardinality warnings #}
-      {%- set hc_cols = column_quality | selectattr("high_cardinality_warning", "defined") | selectattr("high_cardinality_warning") | list -%}
-      {% if hc_cols %}
-      <div class="callout callout-warn">
-        <span class="callout-icon">⚠</span>
-        <div>
-          <div class="callout-title">High Cardinality Detected</div>
-          <div class="callout-body">
-            {% for c in hc_cols %}
-              <span class="badge badge-warn">{{ c.column }}</span>
-            {% endfor %}
-            — these columns have &gt;50% unique values. They may be free-text fields or IDs and could be candidates for dropping.
-          </div>
-        </div>
-      </div>
-      {% endif %}
-    </section>
-
-    <!-- ── 2. Pipeline ── -->
-    <section class="section" id="pipeline">
-      <div class="section-header">
-        <span class="section-title">02 · Pipeline Steps</span>
-        <span class="section-line"></span>
-      </div>
-      <div class="pipeline-bar">
-        <div class="pipeline-step">
-          <span class="pipeline-step-num">01</span>
-          <span class="pipeline-step-name">Headers</span>
-          <span class="pipeline-step-detail">normalised</span>
-        </div>
-        <div class="pipeline-step">
-          <span class="pipeline-step-num">02</span>
-          <span class="pipeline-step-name">Strings</span>
-          <span class="pipeline-step-detail">unicode + whitespace</span>
-        </div>
-        <div class="pipeline-step">
-          <span class="pipeline-step-num">03</span>
-          <span class="pipeline-step-name">Units</span>
-          <span class="pipeline-step-detail">stripped</span>
-        </div>
-        <div class="pipeline-step">
-          <span class="pipeline-step-num">04</span>
-          <span class="pipeline-step-name">Categories</span>
-          <span class="pipeline-step-detail">harmonised</span>
-        </div>
-        <div class="pipeline-step">
-          <span class="pipeline-step-num">05</span>
-          <span class="pipeline-step-name">Duplicates</span>
-          <span class="pipeline-step-detail">{{ rows_in - rows_out }} removed</span>
-        </div>
-        <div class="pipeline-step">
-          <span class="pipeline-step-num">06</span>
-          <span class="pipeline-step-name">Types</span>
-          <span class="pipeline-step-detail">inferred + imputed</span>
-        </div>
-        <div class="pipeline-step">
-          <span class="pipeline-step-num">07</span>
-          <span class="pipeline-step-name">Outliers</span>
-          <span class="pipeline-step-detail">detected</span>
-        </div>
-        <div class="pipeline-step">
-          <span class="pipeline-step-num">08</span>
-          <span class="pipeline-step-name">EDA</span>
-          <span class="pipeline-step-detail">report built</span>
-        </div>
-      </div>
-    </section>
-
-    <!-- ── 3. Column Quality ── -->
-    <section class="section" id="column-quality">
-      <div class="section-header">
-        <span class="section-title">03 · Column Quality</span>
-        <span class="section-line"></span>
-        <span class="section-count">{{ column_quality | length }} columns</span>
-      </div>
-      <div class="table-wrap">
-        <table>
-          <thead>
-            <tr>
-              <th>Column</th>
-              <th>Type</th>
-              <th>Quality Score</th>
-              <th>Missing</th>
-              <th>Outliers</th>
-              <th>Status</th>
-              <th>Notes</th>
-            </tr>
-          </thead>
-          <tbody>
-            {% for col in column_quality %}
-            {% set cls = score_class(col.quality_score) %}
-            <tr>
-              <td style="font-weight:600; color: var(--text)">{{ col.column }}</td>
-              <td><span class="badge badge-neutral">{{ col.type }}</span></td>
-              <td>
-                <div class="score-wrap">
-                  <div class="score-bar-bg">
-                    {%- set score_width = (col.quality_score * 100) | round(0) | int -%}
-                    <div class="score-bar-fill {{ cls }}" style="width: {{ score_width }}%"></div>
-                  </div>
-                  <span class="score-num">{{ col.quality_score }}</span>
+    <div class="table-wrap">
+      <table>
+        <thead>
+          <tr>
+            <th>Column</th>
+            <th>Type</th>
+            <th style="min-width:160px">Quality Score</th>
+            <th>Missing</th>
+            <th>Status</th>
+          </tr>
+        </thead>
+        <tbody>
+          {% for col in column_quality %}
+          <tr>
+            <td class="td-mono">{{ col.column }}</td>
+            <td><span class="badge type">{{ col.type }}</span></td>
+            <td>
+              <div class="sbar-wrap">
+                <div class="sbar">
+                  <div class="sbar-fill {{ col.css_class }}" style="width:{{ (col.quality_score * 100) | round }}%"></div>
                 </div>
-              </td>
-              <td>
-                {%- if col.missing_pct is defined -%}
-                  {{ col.missing_pct }}%
-                {%- else -%}—{%- endif -%}
-              </td>
-              <td>
-                {%- if col.outlier_pct is defined -%}
-                  {{ col.outlier_pct }}%
-                {%- else -%}—{%- endif -%}
-              </td>
-              <td>
-                {% if col.dropped %}
-                  <span class="badge badge-bad">DROPPED</span>
-                {% else %}
-                  <span class="badge badge-{{ cls }}">{{ cls | upper }}</span>
-                {% endif %}
-              </td>
-              <td style="color: var(--text2); font-size: 0.7rem;">
-                {%- if col.dropped -%}
-                  {{ col.drop_reason | replace("_", " ") }}
-                {%- elif col.high_cardinality_warning is defined and col.high_cardinality_warning -%}
-                  <span style="color: var(--warn)">high cardinality</span>
-                {%- elif col.imputation_method is defined -%}
-                  imputed via {{ col.imputation_method }}
-                {%- else -%}—{%- endif -%}
-              </td>
-            </tr>
-            {% endfor %}
-          </tbody>
-        </table>
-      </div>
-    </section>
-
-    <!-- ── 4. Missing Values ── -->
-    {% if missing_values %}
-    <section class="section" id="missing">
-      <div class="section-header">
-        <span class="section-title">04 · Missing Values</span>
-        <span class="section-line"></span>
-        <span class="section-count">{{ missing_values | length }} affected</span>
-      </div>
-      <div class="table-wrap">
-        <table>
-          <thead>
-            <tr>
-              <th>Column</th>
-              <th>Missing Count</th>
-              <th>% of Rows</th>
-              <th>Distribution</th>
-            </tr>
-          </thead>
-          <tbody>
-            {% for m in missing_values %}
-            {%- set pct = (m.count / rows_in * 100) | round(1) -%}
-            <tr>
-              <td style="font-weight:600">{{ m.column }}</td>
-              <td style="font-family: var(--mono)">{{ m.count }}</td>
-              <td>
-                <span class="badge {% if pct > 60 %}badge-bad{% elif pct > 30 %}badge-warn{% else %}badge-neutral{% endif %}">
-                  {{ pct }}%
-                </span>
-              </td>
-              <td>
-                <span class="missing-bar-bg">
-                  {%- set missing_width = [pct, 100] | min | int -%}
-                  <span class="missing-bar-fill" style="width: {{ missing_width }}%"></span>
-                </span>
-              </td>
-            </tr>
-            {% endfor %}
-          </tbody>
-        </table>
-      </div>
-    </section>
-    {% endif %}
-
-    <!-- ── 5. Distributions ── -->
-    {% if distributions %}
-    <section class="section" id="distributions">
-      <div class="section-header">
-        <span class="section-title">05 · Distributions</span>
-        <span class="section-line"></span>
-        <span class="section-count">{{ distributions | length }} numeric columns</span>
-      </div>
-      <div class="table-wrap">
-        <table>
-          <thead>
-            <tr>
-              <th>Column</th>
-              <th>Skewness</th>
-              <th>Kurtosis</th>
-              <th>Normality (p)</th>
-              <th>Normal?</th>
-              <th>Shape</th>
-            </tr>
-          </thead>
-          <tbody>
-            {% for col, d in distributions.items() %}
-            <tr>
-              <td style="font-weight:600">{{ col }}</td>
-              <td style="font-family:var(--mono)">
-                <span style="color: {% if d.skewness | abs > 1 %}var(--warn){% else %}var(--text){% endif %}">
-                  {{ d.skewness }}
-                </span>
-              </td>
-              <td style="font-family:var(--mono)">{{ d.kurtosis }}</td>
-              <td style="font-family:var(--mono)">{{ d.normality_p_value }}</td>
-              <td>
-                {% if d.is_normal %}
-                  <span class="badge badge-good">YES</span>
-                {% else %}
-                  <span class="badge badge-warn">NO</span>
-                {% endif %}
-              </td>
-              <td>
-                <div class="dist-row">
-                  {%- if d.skewness > 1 -%}
-                    <span class="dist-pill">right-skewed</span>
-                  {%- elif d.skewness < -1 -%}
-                    <span class="dist-pill">left-skewed</span>
-                  {%- else -%}
-                    <span class="dist-pill">symmetric</span>
-                  {%- endif -%}
-                  {%- if d.kurtosis > 3 -%}
-                    <span class="dist-pill">heavy tails</span>
-                  {%- elif d.kurtosis < -1 -%}
-                    <span class="dist-pill">flat</span>
-                  {%- endif -%}
-                </div>
-              </td>
-            </tr>
-            {% endfor %}
-          </tbody>
-        </table>
-      </div>
-    </section>
-    {% endif %}
-
-    <!-- ── 6. Correlation Matrix ── -->
-    {% if corr_columns %}
-    <section class="section" id="correlations">
-      <div class="section-header">
-        <span class="section-title">06 · Correlation Matrix</span>
-        <span class="section-line"></span>
-        <span class="section-count">{{ corr_columns | length }} numeric columns</span>
-      </div>
-      <div class="table-wrap">
-        <table>
-          <thead>
-            <tr>
-              <th style="background: var(--bg2)"></th>
-              {% for c in corr_columns %}
-              <th>{{ c }}</th>
-              {% endfor %}
-            </tr>
-          </thead>
-          <tbody>
-            {% for row in corr_rows %}
-            <tr>
-              <td style="font-weight:600; color:var(--text2); background: var(--surface2);">{{ row.label }}</td>
-              {% for c in corr_columns %}
-              {%- set val = row[c] -%}
-              <td class="corr-cell
-                {%- if val == row.label or val == 1.0 %} corr-diag
-                {%- elif val is number and val > 0.7 %} corr-high-pos
-                {%- elif val is number and val < -0.7 %} corr-high-neg
-                {%- elif val is number and (val > 0.4 or val < -0.4) %} corr-mid
-                {%- endif -%}">
-                {{ val if val is not none else "—" }}
-              </td>
-              {% endfor %}
-            </tr>
-            {% endfor %}
-          </tbody>
-        </table>
-      </div>
-    </section>
-    {% endif %}
-
-    <!-- ── 7. Category Value Counts ── -->
-    {% if value_counts %}
-    <section class="section" id="categories">
-      <div class="section-header">
-        <span class="section-title">07 · Category Distributions</span>
-        <span class="section-line"></span>
-        <span class="section-count">{{ value_counts | length }} categorical columns</span>
-      </div>
-      <div style="display: grid; grid-template-columns: repeat(auto-fit, minmax(320px, 1fr)); gap: 1rem;">
-        {% for col, counts in value_counts.items() %}
-        {%- set max_count = counts.values() | max -%}
-        <div style="border: 1px solid var(--border); border-radius: var(--radius); overflow: hidden;">
-          <div style="padding: 0.75rem 1rem; background: var(--surface2); border-bottom: 1px solid var(--border); font-family: var(--mono); font-size: 0.72rem; color: var(--text2); font-weight: 600;">
-            {{ col }}
-          </div>
-          <div style="padding: 0.75rem 1rem; background: var(--surface);">
-            <div class="vchart">
-              {% for label, count in counts.items() %}
-              <div class="vchart-row">
-                <span class="vchart-label" title="{{ label }}">{{ label | string | truncate(20) }}</span>
-                <div class="vchart-bar-bg">
-                  {%- set bar_width = (count / max_count * 100) | round(0) | int -%}
-                  <div class="vchart-bar-fill" style="width: {{ bar_width }}%"></div>
-                </div>
-                <span class="vchart-count">{{ count }}</span>
+                <span class="sbar-num">{{ col.quality_score }}</span>
               </div>
-              {% endfor %}
-            </div>
-          </div>
-        </div>
-        {% endfor %}
-      </div>
-    </section>
-    {% endif %}
+            </td>
+            <td class="td-dim">{% if col.missing_pct is not none %}{{ col.missing_pct }}%{% else %}—{% endif %}</td>
+            <td><span class="badge {{ col.css_class }}">{{ col.css_class.upper() }}</span></td>
+          </tr>
+          {% endfor %}
+        </tbody>
+      </table>
+    </div>
+  </section>
 
-    <!-- ── 8. Data Preview ── -->
-    <section class="section" id="preview">
-      <div class="section-header">
-        <span class="section-title">08 · Data Preview</span>
-        <span class="section-line"></span>
-        <span class="section-count">first 10 rows</span>
-      </div>
-      <div class="table-wrap">
-        {{ preview_html | safe }}
-      </div>
-    </section>
+  <!-- Missing Values -->
+  {% if missing_values %}
+  <section>
+    <div class="section-head">
+      <span class="section-hed">Missing Values</span>
+      <span class="section-rule"></span>
+      <span class="section-count">{{ missing_values | length }} columns affected</span>
+    </div>
+    <div class="table-wrap">
+      <table>
+        <thead>
+          <tr><th>Column</th><th>Missing Count</th><th>Percentage</th><th>Distribution</th></tr>
+        </thead>
+        <tbody>
+          {% for m in missing_values %}
+          <tr>
+            <td class="td-mono">{{ m.column }}</td>
+            <td class="td-dim">{{ m.count }}</td>
+            <td class="td-dim">{{ ((m.count / shape[0]) * 100) | round(1) }}%</td>
+            <td>
+              <div class="missing-bar-wrap">
+                <div class="missing-bar" style="width: {{ [m.count / shape[0] * 100, 100] | min }}%"></div>
+              </div>
+            </td>
+          </tr>
+          {% endfor %}
+        </tbody>
+      </table>
+    </div>
+  </section>
+  {% endif %}
 
-    <!-- ── 9. Audit Log ── -->
-    <section class="section" id="audit-log">
-      <div class="section-header">
-        <span class="section-title">09 · Audit Log</span>
-        <span class="section-line"></span>
-        <span class="section-count">{{ audit_log | length }} entries</span>
-      </div>
-      <div class="audit-log">
-        {% for entry in audit_log %}
-        {%- set action = entry.get("action", "") -%}
-        {%- set col    = entry.get("column", "") -%}
-        {%- set ts     = entry.get("timestamp", "") -%}
-        <div class="audit-entry">
-          <div class="audit-cell audit-ts">{{ ts[11:19] if ts else "—" }}</div>
-          <div class="audit-cell">
-            <span class="audit-action {{ action_class(action) }}">{{ action | replace("_", " ") }}</span>
-            {% if col %}<span style="color:var(--muted); margin-left: 0.5rem; font-size:0.65rem;">{{ col }}</span>{% endif %}
-          </div>
-          <div class="audit-cell audit-detail">
-            {% for k, v in entry.items() %}
-              {%- if k not in ["action", "column", "timestamp"] -%}
-              <span class="audit-kv">
-                <span class="audit-kv-key">{{ k }}:</span>
-                <span class="audit-kv-val">
-                  {%- if v is iterable and v is not string -%}
-                    {{ v | join(", ") }}
-                  {%- else -%}
-                    {{ v }}
-                  {%- endif -%}
-                </span>
-              </span>
-              {%- endif -%}
+  <!-- Data Preview -->
+  <section>
+    <div class="section-head">
+      <span class="section-hed">Data Preview</span>
+      <span class="section-rule"></span>
+      <span class="section-count">first 10 rows</span>
+    </div>
+    <div class="table-wrap preview-table">
+      {{ preview_html | safe }}
+    </div>
+  </section>
+
+  <!-- Correlation Matrix -->
+  {% if corr_columns %}
+  <section>
+    <div class="section-head">
+      <span class="section-hed">Correlation Matrix</span>
+      <span class="section-rule"></span>
+    </div>
+    <div class="table-wrap">
+      <table>
+        <thead>
+          <tr>
+            <th></th>
+            {% for c in corr_columns %}<th>{{ c }}</th>{% endfor %}
+          </tr>
+        </thead>
+        <tbody>
+          {% for row in corr_rows %}
+          <tr>
+            <td class="td-mono">{{ row.label }}</td>
+            {% for c in corr_columns %}
+            {% set val = row[c] %}
+            <td class="corr-cell
+              {% if val == 1.0 %} corr-diag
+              {% elif val is number and val > 0.7 %} corr-high-pos
+              {% elif val is number and val < -0.7 %} corr-high-neg
+              {% endif %}">{{ val }}</td>
             {% endfor %}
-          </div>
-        </div>
-        {% endfor %}
+          </tr>
+          {% endfor %}
+        </tbody>
+      </table>
+    </div>
+  </section>
+  {% endif %}
+
+  <!-- Audit Log -->
+  <section>
+    <div class="section-head">
+      <span class="section-hed">Audit Log</span>
+      <span class="section-rule"></span>
+      <span class="section-count">{{ audit_log | length }} entries</span>
+    </div>
+    <div class="log-list">
+      <div class="log-head">
+        <div class="log-hcell">Time</div>
+        <div class="log-hcell">Action · Column</div>
+        <div class="log-hcell">Detail</div>
       </div>
-    </section>
+      {% for entry in audit_log %}
+      <div class="log-entry">
+        <div class="log-cell log-ts">{{ entry.get("timestamp", "")[-8:-3] or "—" }}</div>
+        <div class="log-cell">
+          {% set action = entry.get("action", "") %}
+          <span class="log-action
+            {% if 'drop' in action or 'remov' in action %}drop
+            {% elif 'impute' in action or 'fill' in action %}impute
+            {% elif 'outlier' in action %}outlier
+            {% elif 'pipeline' in action or 'complete' in action or 'started' in action %}pipeline
+            {% elif 'id_column' in action %}id
+            {% endif %}">{{ action.replace("_", " ") }}</span>
+          {% if entry.get("column") %}<span class="log-col">{{ entry.get("column") }}</span>{% endif %}
+        </div>
+        <div class="log-cell log-detail">
+          {% for k, v in entry.items() %}
+            {% if k not in ["column", "action", "timestamp"] %}
+            <span class="kv"><span class="kv-k">{{ k }}:</span><span class="kv-v">{{ v }}</span></span>
+            {% endif %}
+          {% endfor %}
+        </div>
+      </div>
+      {% endfor %}
+    </div>
+  </section>
 
-  </main>
-</div>
+</main>
 
-<script>
-  // ── Sidebar active link on scroll ──
-  const links = document.querySelectorAll('.sidebar-link');
-  const sections = document.querySelectorAll('.section[id]');
-
-  const observer = new IntersectionObserver(
-    (entries) => {
-      entries.forEach(entry => {
-        if (entry.isIntersecting) {
-          links.forEach(l => l.classList.remove('active'));
-          const active = document.querySelector(`.sidebar-link[href="#${entry.target.id}"]`);
-          if (active) active.classList.add('active');
-        }
-      });
-    },
-    { rootMargin: '-20% 0px -70% 0px' }
-  );
-  sections.forEach(s => observer.observe(s));
-</script>
+<footer>
+  Generated by <strong>Oxdemi.io</strong> · Raw in. Clean out.
+</footer>
 
 </body>
 </html>
