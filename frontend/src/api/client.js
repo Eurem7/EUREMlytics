@@ -1,4 +1,4 @@
-const BASE = import.meta.env.VITE_API_URL || 'https://euremlytics-2.onrender.com/'
+const BASE = import.meta.env.VITE_API_URL || 'https://euremlytics-2.onrender.com'
 
 export async function uploadFile(file) {
   const form = new FormData()
@@ -24,3 +24,4 @@ export async function cleanData(sessionId, configOverrides = {}) {
 export const csvDownloadUrl  = (sid) => `${BASE}/report/csv?session_id=${sid}`
 export const pdfDownloadUrl  = (sid) => `${BASE}/report/pdf?session_id=${sid}`
 export const reportHtmlUrl   = (sid) => `${BASE}/report/html?session_id=${sid}`
+
