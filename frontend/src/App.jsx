@@ -340,7 +340,7 @@ body {
   border-color: var(--accent);
   border-style: solid;
 }
-.dropzone input { position: absolute; inset: 0; opacity: 0; cursor: pointer; }
+.dropzone input { display: none; }
 .dz-icon {
   width: 44px; height: 44px;
   background: var(--surface);
