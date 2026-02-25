@@ -4,7 +4,12 @@
  * Vite proxy rewrites /api/* → http://127.0.0.1:8000/*
  */
 
-const BASE = '/api'
+const BASE = import.meta.env.VITE_API_URL || '/api'
+```
+
+And add a `.env` file inside `frontend/`:
+```
+VITE_API_URL=https://euremlytics-2.onrender.com/
 
 async function request(path, options = {}) {
   const res = await fetch(`${BASE}${path}`, options)
@@ -43,4 +48,5 @@ export function pdfDownloadUrl(sessionId) {
 /** HTML report URL — open in iframe or new tab */
 export function reportHtmlUrl(sessionId) {
   return `${BASE}/report/html?session_id=${sessionId}`
+
 }
