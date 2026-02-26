@@ -685,6 +685,84 @@ body {
   margin-bottom: 2rem;
 }
 
+
+/* ── Dashboard tabs ── */
+.dash-tabs {
+  display: flex;
+  gap: 0;
+  border-bottom: 1px solid var(--border2);
+  margin-bottom: 2rem;
+}
+.dash-tab {
+  padding: 0.6rem 1.1rem;
+  font-size: 0.78rem;
+  font-weight: 500;
+  color: var(--text3);
+  background: none;
+  border: none;
+  border-bottom: 2px solid transparent;
+  cursor: pointer;
+  font-family: var(--sans);
+  transition: all 0.15s;
+  margin-bottom: -1px;
+  white-space: nowrap;
+}
+.dash-tab:hover { color: var(--text); }
+.dash-tab.active {
+  color: var(--text);
+  border-bottom-color: var(--text);
+  font-weight: 600;
+}
+
+/* ── Preview table ── */
+.preview-wrap {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 1.25rem;
+}
+@media (max-width: 780px) { .preview-wrap { grid-template-columns: 1fr; } }
+.preview-card {
+  background: var(--surface);
+  border: 1px solid var(--border2);
+  border-radius: var(--r2);
+  overflow: hidden;
+  box-shadow: var(--sh);
+}
+.preview-card-head {
+  padding: 0.6rem 1rem;
+  background: var(--bg);
+  border-bottom: 1px solid var(--border2);
+  display: flex; align-items: center; gap: 0.5rem;
+}
+.preview-card-title {
+  font-size: 0.65rem; font-weight: 700; text-transform: uppercase;
+  letter-spacing: 0.1em; color: var(--text3);
+}
+.preview-card-badge {
+  font-family: var(--mono); font-size: 0.6rem;
+  padding: 0.1rem 0.45rem; border-radius: 3px;
+  font-weight: 600;
+}
+.preview-card-badge.raw   { background: var(--warn-bg); color: var(--warn); border: 1px solid rgba(180,83,9,0.15); }
+.preview-card-badge.clean { background: var(--green-bg); color: var(--green); border: 1px solid rgba(0,135,90,0.15); }
+.preview-tbl-wrap { overflow-x: auto; max-height: 340px; overflow-y: auto; }
+.preview-tbl { width: 100%; border-collapse: collapse; font-size: 0.7rem; }
+.preview-tbl th {
+  background: var(--bg2); color: var(--text3); font-weight: 600;
+  text-transform: uppercase; letter-spacing: 0.06em; font-size: 0.58rem;
+  padding: 0.5rem 0.75rem; text-align: left;
+  border-bottom: 1px solid var(--border2);
+  position: sticky; top: 0; white-space: nowrap;
+}
+.preview-tbl td {
+  padding: 0.45rem 0.75rem; border-bottom: 1px solid var(--border);
+  font-family: var(--mono); color: var(--text2); white-space: nowrap;
+  max-width: 160px; overflow: hidden; text-overflow: ellipsis;
+}
+.preview-tbl tr:last-child td { border-bottom: none; }
+.preview-tbl tr:hover td { background: var(--surface2); }
+.preview-tbl td.null-val { color: var(--text3); font-style: italic; }
+
 /* ── SECTION ── */
 .section { margin-bottom: 2.25rem; }
 .section-head {
@@ -1237,10 +1315,14 @@ function CleanScreen({ uploadData, onCleaned }) {
 // Dashboard
 // ─────────────────────────────────────────────────────────────
 function Dashboard({ result, sessionId, onViewReport }) {
+  const [tab, setTab] = useState('overview')
+
   const quality    = result.column_quality_summary || []
   const audit      = result.audit_log || []
   const cleanShape = result.cleaned_shape || [0,0]
   const origShape  = result.original_shape || [0,0]
+  const rawRows    = result.raw_dataframe || []
+  const cleanRows  = (result.cleaned_dataframe || []).slice(0, 10)
 
   const dropped    = quality.filter(q => q.dropped).length
   const nGood      = quality.filter(q => !q.dropped && q.quality_score >= 0.85).length
@@ -1248,9 +1330,9 @@ function Dashboard({ result, sessionId, onViewReport }) {
   const nBad       = quality.filter(q => !q.dropped && q.quality_score < 0.60).length
   const avgScore   = quality.length ? (quality.reduce((s,q) => s + q.quality_score, 0) / quality.length).toFixed(2) : 0
 
-  const typeBreakdown = quality.reduce((acc, q) => {
-    acc[q.type] = (acc[q.type] || 0) + 1; return acc
-  }, {})
+  // Columns for each preview table
+  const rawCols   = rawRows.length   ? Object.keys(rawRows[0])   : []
+  const cleanCols = cleanRows.length ? Object.keys(cleanRows[0]) : []
 
   return (
     <div className="page anim-fade-up">
@@ -1322,6 +1404,16 @@ function Dashboard({ result, sessionId, onViewReport }) {
         </div>
       </div>
 
+      {/* Tab bar */}
+      <div className="dash-tabs">
+        <button className={`dash-tab${tab==='overview'?' active':''}`} onClick={() => setTab('overview')}>Overview</button>
+        <button className={`dash-tab${tab==='preview'?' active':''}`} onClick={() => setTab('preview')}>Data Preview</button>
+        <button className={`dash-tab${tab==='audit'?' active':''}`} onClick={() => setTab('audit')}>Audit Log</button>
+      </div>
+
+      {/* ── OVERVIEW TAB ── */}
+      {tab === 'overview' && <>
+
       {/* Column quality table */}
       <div className="section">
         <div className="section-head">
@@ -1378,46 +1470,117 @@ function Dashboard({ result, sessionId, onViewReport }) {
         </div>
       </div>
 
-      {/* Audit log */}
-      <div className="section">
-        <div className="section-head">
-          <span className="section-hed">Audit Log</span>
-          <span className="section-rule" />
-          <span className="section-count">{audit.length} entries</span>
-        </div>
-        <div className="audit-wrap">
-          <div className="audit-head">
-            <div className="audit-hcell">Time</div>
-            <div className="audit-hcell">Action · Column</div>
-            <div className="audit-hcell">Detail</div>
+      </> /* end overview tab */ }
+
+      {/* ── PREVIEW TAB ── */}
+      {tab === 'preview' && (
+        <div className="section">
+          <div className="section-head">
+            <span className="section-hed">Data Preview</span>
+            <span className="section-rule" />
+            <span className="section-count">first 10 rows · {rawCols.length} → {cleanCols.length} columns</span>
           </div>
-          {audit.map((entry, i) => {
-            const action = entry.action || ''
-            const col    = entry.column || ''
-            const ts     = (entry.timestamp || '').slice(11,19)
-            const extras = Object.entries(entry).filter(([k]) =>
-              !['action','column','timestamp'].includes(k)
-            )
-            return (
-              <div className="audit-row" key={i}>
-                <div className="audit-cell a-ts">{ts || '—'}</div>
-                <div className="audit-cell">
-                  <span className={`a-action ${actionCls(action)}`}>{action.replace(/_/g,' ')}</span>
-                  {col && <span className="a-col">{col}</span>}
-                </div>
-                <div className="audit-cell a-detail">
-                  {extras.map(([k,v]) => (
-                    <span className="a-kv" key={k}>
-                      <span className="a-k">{k}:</span>
-                      <span className="a-v">{Array.isArray(v) ? v.join(', ') : String(v)}</span>
-                    </span>
-                  ))}
-                </div>
+          <div className="preview-wrap">
+
+            {/* Raw */}
+            <div className="preview-card">
+              <div className="preview-card-head">
+                <span className="preview-card-title">Before Cleaning</span>
+                <span className="preview-card-badge raw">Raw</span>
               </div>
-            )
-          })}
+              <div className="preview-tbl-wrap">
+                <table className="preview-tbl">
+                  <thead>
+                    <tr>{rawCols.map(c => <th key={c}>{c}</th>)}</tr>
+                  </thead>
+                  <tbody>
+                    {rawRows.map((row, i) => (
+                      <tr key={i}>
+                        {rawCols.map(c => (
+                          <td key={c} className={row[c] == null || row[c] === '' ? 'null-val' : ''}>
+                            {row[c] == null || row[c] === '' ? 'null' : String(row[c])}
+                          </td>
+                        ))}
+                      </tr>
+                    ))}
+                  </tbody>
+                </table>
+              </div>
+            </div>
+
+            {/* Cleaned */}
+            <div className="preview-card">
+              <div className="preview-card-head">
+                <span className="preview-card-title">After Cleaning</span>
+                <span className="preview-card-badge clean">Clean</span>
+              </div>
+              <div className="preview-tbl-wrap">
+                <table className="preview-tbl">
+                  <thead>
+                    <tr>{cleanCols.map(c => <th key={c}>{c}</th>)}</tr>
+                  </thead>
+                  <tbody>
+                    {cleanRows.map((row, i) => (
+                      <tr key={i}>
+                        {cleanCols.map(c => (
+                          <td key={c} className={row[c] == null || row[c] === '' ? 'null-val' : ''}>
+                            {row[c] == null || row[c] === '' ? 'null' : String(row[c])}
+                          </td>
+                        ))}
+                      </tr>
+                    ))}
+                  </tbody>
+                </table>
+              </div>
+            </div>
+
+          </div>
         </div>
-      </div>
+      )}
+
+      {/* ── AUDIT TAB ── */}
+      {tab === 'audit' && (
+        <div className="section">
+          <div className="section-head">
+            <span className="section-hed">Audit Log</span>
+            <span className="section-rule" />
+            <span className="section-count">{audit.length} entries</span>
+          </div>
+          <div className="audit-wrap">
+            <div className="audit-head">
+              <div className="audit-hcell">Time</div>
+              <div className="audit-hcell">Action · Column</div>
+              <div className="audit-hcell">Detail</div>
+            </div>
+            {audit.map((entry, i) => {
+              const action = entry.action || ''
+              const col    = entry.column || ''
+              const ts     = (entry.timestamp || '').slice(11,19)
+              const extras = Object.entries(entry).filter(([k]) =>
+                !['action','column','timestamp'].includes(k)
+              )
+              return (
+                <div className="audit-row" key={i}>
+                  <div className="audit-cell a-ts">{ts || '—'}</div>
+                  <div className="audit-cell">
+                    <span className={`a-action ${actionCls(action)}`}>{action.replace(/_/g,' ')}</span>
+                    {col && <span className="a-col">{col}</span>}
+                  </div>
+                  <div className="audit-cell a-detail">
+                    {extras.map(([k,v]) => (
+                      <span className="a-kv" key={k}>
+                        <span className="a-k">{k}:</span>
+                        <span className="a-v">{Array.isArray(v) ? v.join(', ') : String(v)}</span>
+                      </span>
+                    ))}
+                  </div>
+                </div>
+              )
+            })}
+          </div>
+        </div>
+      )}
+
     </div>
   )
 }
