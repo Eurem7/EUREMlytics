@@ -43,7 +43,7 @@ app.add_middleware(
         "http://localhost:5173",
         "https://eure-mlytics.vercel.app",
     ],
-    allow_credentials=True,
+    allow_credentials=False,
     allow_methods=["*"],
     allow_headers=["*"],
 )
@@ -75,3 +75,4 @@ def root():
         "report":  "GET  /report/html?session_id=<id>",
 
     }
+
