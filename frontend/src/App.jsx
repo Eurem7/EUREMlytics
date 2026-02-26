@@ -1,5 +1,7 @@
 import { useState, useCallback, useRef, useEffect } from 'react'
 import { uploadFile, cleanData, csvDownloadUrl, pdfDownloadUrl, reportHtmlUrl } from './api/client.js'
+import { supabase } from './lib/supabase.js'
+import AuthScreen from './AuthScreen.jsx'
 
 // ─────────────────────────────────────────────────────────────
 // Global styles — Precision Instrument aesthetic
@@ -177,6 +179,34 @@ body {
   border-radius: 4px;
   letter-spacing: 0.02em;
 }
+.topbar-user {
+  display: flex; align-items: center; gap: 0.5rem;
+}
+.topbar-avatar {
+  width: 24px; height: 24px; border-radius: 50%;
+  background: var(--text); color: #fff;
+  display: flex; align-items: center; justify-content: center;
+  font-size: 0.6rem; font-weight: 700; font-family: var(--mono);
+  flex-shrink: 0;
+}
+.topbar-email {
+  font-family: var(--mono); font-size: 0.62rem; color: var(--text3);
+  max-width: 140px; overflow: hidden; text-overflow: ellipsis; white-space: nowrap;
+}
+.topbar-signout {
+  font-size: 0.68rem; font-weight: 500; color: var(--text3);
+  background: none; border: 1px solid var(--border2); border-radius: 4px;
+  padding: 0.2rem 0.55rem; cursor: pointer; font-family: var(--sans);
+  transition: all 0.15s;
+}
+.topbar-signout:hover { color: var(--red); border-color: rgba(192,57,43,0.3); }
+.topbar-signin {
+  font-size: 0.72rem; font-weight: 600; color: var(--accent);
+  background: var(--accent-bg); border: 1px solid rgba(26,107,255,0.2);
+  border-radius: 4px; padding: 0.25rem 0.65rem; cursor: pointer;
+  font-family: var(--sans); transition: all 0.15s;
+}
+.topbar-signin:hover { background: var(--accent); color: #fff; }
 
 /* ── BUTTONS ── */
 .btn {
@@ -964,7 +994,7 @@ const STEPS = ['Headers','Strings','Units','Harmonise','Dupes','Types','Outliers
 // ─────────────────────────────────────────────────────────────
 // Topbar
 // ─────────────────────────────────────────────────────────────
-function Topbar({ step, sessionId }) {
+function Topbar({ step, sessionId, user, onSignIn, onSignOut }) {
   const STEPS_NAV = ['Upload','Clean','Results']
   return (
     <div className="topbar">
@@ -986,6 +1016,15 @@ function Topbar({ step, sessionId }) {
       </div>
       <div className="topbar-right">
         {sessionId && <span className="topbar-badge">sess: {sessionId.slice(0,8)}…</span>}
+        {user ? (
+          <div className="topbar-user">
+            <div className="topbar-avatar">{(user.email||'?')[0].toUpperCase()}</div>
+            <span className="topbar-email">{user.email}</span>
+            <button className="topbar-signout" onClick={onSignOut}>Sign out</button>
+          </div>
+        ) : (
+          <button className="topbar-signin" onClick={onSignIn}>Sign in</button>
+        )}
       </div>
     </div>
   )
@@ -1611,33 +1650,101 @@ function ReportScreen({ sessionId, onBack }) {
 // ─────────────────────────────────────────────────────────────
 // Root
 // ─────────────────────────────────────────────────────────────
+const FREE_ROW_LIMIT = 500
+
 export default function App() {
   const [screen, setScreen]         = useState('upload')
   const [uploadData, setUploadData] = useState(null)
   const [result, setResult]         = useState(null)
+  const [user, setUser]             = useState(null)
+  const [authReason, setAuthReason] = useState(null) // 'row_limit' | 'signin'
+  const [authChecked, setAuthChecked] = useState(false)
+
+  // Listen for auth state changes
+  useEffect(() => {
+    supabase.auth.getSession().then(({ data: { session } }) => {
+      setUser(session?.user || null)
+      setAuthChecked(true)
+    })
+    const { data: { subscription } } = supabase.auth.onAuthStateChange((_event, session) => {
+      setUser(session?.user || null)
+      // If user just signed in and we were showing auth screen, go back to upload
+      if (session?.user && screen === 'auth') setScreen('upload')
+    })
+    return () => subscription.unsubscribe()
+  }, [])
+
+  const handleUploaded = (data) => {
+    // Check row limit for non-signed-in users
+    if (!user && data.rows > FREE_ROW_LIMIT) {
+      setUploadData(data)
+      setAuthReason('row_limit')
+      setScreen('auth')
+      return
+    }
+    setUploadData(data)
+    setScreen('clean')
+  }
+
+  const handleSignOut = async () => {
+    await supabase.auth.signOut()
+    setUser(null)
+    setScreen('upload')
+    setUploadData(null)
+    setResult(null)
+  }
+
+  const handleAuth = (authUser) => {
+    setUser(authUser)
+    // After sign in, if we hit row limit, continue to clean
+    if (authReason === 'row_limit' && uploadData) {
+      setAuthReason(null)
+      setScreen('clean')
+    } else {
+      setScreen('upload')
+    }
+  }
+
+  if (!authChecked) return null // wait for session check
 
   const stepIndex = { upload:0, clean:1, dashboard:2, report:2 }[screen] ?? 0
 
   return (
     <>
       <style>{G}</style>
-      <Topbar step={stepIndex} sessionId={uploadData?.session_id} />
 
-      {screen === 'upload' && (
-        <UploadScreen onUploaded={d => { setUploadData(d); setScreen('clean') }} />
-      )}
-      {screen === 'clean' && uploadData && (
-        <CleanScreen uploadData={uploadData} onCleaned={r => { setResult(r); setScreen('dashboard') }} />
-      )}
-      {screen === 'dashboard' && result && (
-        <Dashboard
-          result={result}
-          sessionId={uploadData.session_id}
-          onViewReport={() => setScreen('report')}
+      {screen === 'auth' ? (
+        <AuthScreen
+          onAuth={handleAuth}
+          reason={authReason}
         />
-      )}
-      {screen === 'report' && (
-        <ReportScreen sessionId={uploadData.session_id} onBack={() => setScreen('dashboard')} />
+      ) : (
+        <>
+          <Topbar
+            step={stepIndex}
+            sessionId={uploadData?.session_id}
+            user={user}
+            onSignIn={() => { setAuthReason('signin'); setScreen('auth') }}
+            onSignOut={handleSignOut}
+          />
+
+          {screen === 'upload' && (
+            <UploadScreen onUploaded={handleUploaded} />
+          )}
+          {screen === 'clean' && uploadData && (
+            <CleanScreen uploadData={uploadData} onCleaned={r => { setResult(r); setScreen('dashboard') }} />
+          )}
+          {screen === 'dashboard' && result && (
+            <Dashboard
+              result={result}
+              sessionId={uploadData.session_id}
+              onViewReport={() => setScreen('report')}
+            />
+          )}
+          {screen === 'report' && (
+            <ReportScreen sessionId={uploadData.session_id} onBack={() => setScreen('dashboard')} />
+          )}
+        </>
       )}
     </>
   )
