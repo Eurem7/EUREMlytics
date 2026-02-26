@@ -1,0 +1,60 @@
+"""
+app/auth.py
+===========
+Supabase JWT verification for FastAPI.
+
+Extracts and verifies the Bearer token from the Authorization header.
+Returns the user payload if valid, None if no token (anonymous user).
+Raises 401 if token is present but invalid.
+"""
+
+import os
+from typing import Optional
+from fastapi import Request, HTTPException
+from jose import jwt, JWTError
+
+SUPABASE_JWT_SECRET = os.getenv("SUPABASE_JWT_SECRET", "eeVjr4TPk3WzjvLwrXQF5hwTAgHrPeqjNSLqTU9quWcYpnJegwNB3uyrflKRrlNoJtfCSPe8tBUE+TexJLBY9w==")
+
+
+def get_current_user(request: Request) -> Optional[dict]:
+    """
+    Extract and verify Supabase JWT from Authorization header.
+    Returns user payload dict if authenticated, None if anonymous.
+    Raises 401 if token is present but invalid.
+    """
+    auth_header = request.headers.get("Authorization", "")
+    if not auth_header.startswith("Bearer "):
+        return None  # anonymous — no token
+
+    token = auth_header.split(" ", 1)[1].strip()
+    if not token:
+        return None
+
+    if not SUPABASE_JWT_SECRET:
+        # JWT secret not configured — skip verification in dev
+        return {"sub": "dev-user", "email": "dev@local"}
+
+    try:
+        payload = jwt.decode(
+            token,
+            SUPABASE_JWT_SECRET,
+            algorithms=["HS256"],
+            options={"verify_aud": False},
+        )
+        return payload
+    except JWTError as e:
+        raise HTTPException(status_code=401, detail=f"Invalid token: {e}")
+
+
+def require_auth(request: Request) -> dict:
+    """
+    Like get_current_user but raises 401 if not authenticated.
+    Use as a FastAPI dependency on protected routes.
+    """
+    user = get_current_user(request)
+    if not user:
+        raise HTTPException(
+            status_code=401,
+            detail="Authentication required. Please sign in.",
+        )
+    return user
