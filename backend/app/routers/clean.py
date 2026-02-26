@@ -43,6 +43,9 @@ def clean_data(
 ):
     df = _get_dataframe(session_id)
 
+    # Snapshot raw data BEFORE engine runs — engine may modify df in place
+    raw_preview = df.head(10).copy().to_dict(orient="records")
+
     config = CleaningConfig()
     if outlier_method:              config.outlier_method = outlier_method
     if outlier_action:              config.outlier_action = outlier_action
@@ -65,7 +68,7 @@ def clean_data(
 
     return CleaningResponse(
         session_id=session_id,
-        raw_dataframe=df.head(10).to_dict(orient="records"),
+        raw_dataframe=raw_preview,
         cleaned_dataframe=cleaned_df.to_dict(orient="records"),
         audit_log=result["audit_log"],
         column_quality_summary=result["column_quality_summary"],
