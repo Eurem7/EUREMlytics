@@ -426,7 +426,97 @@ body {
   letter-spacing: -0.04em;
   margin-bottom: 0.5rem;
 }
-.clean-sub { color: var(--text2); font-size: 0.88rem; margin-bottom: 2.5rem; }
+.clean-sub { color: var(--text2); font-size: 0.88rem; margin-bottom: 1.5rem; }
+
+/* ── Config panel ── */
+.config-toggle {
+  display: inline-flex; align-items: center; gap: 0.5rem;
+  font-size: 0.75rem; font-weight: 500; color: var(--text2);
+  background: var(--surface); border: 1px solid var(--border2);
+  border-radius: var(--r); cursor: pointer; padding: 0.45rem 0.9rem;
+  font-family: var(--sans); margin-bottom: 1.25rem;
+  transition: all 0.15s; box-shadow: var(--sh);
+}
+.config-toggle:hover { border-color: var(--accent); color: var(--accent); }
+.config-toggle-arrow { font-size: 0.65rem; transition: transform 0.2s; display: inline-block; }
+.config-toggle-arrow.open { transform: rotate(90deg); }
+
+.config-panel {
+  background: var(--surface);
+  border: 1px solid var(--border2);
+  border-radius: var(--r2);
+  overflow: hidden;
+  margin-bottom: 1.5rem;
+  box-shadow: var(--sh2);
+  text-align: left;
+  animation: fadeUp 0.2s ease both;
+  width: 100%;
+  max-width: 520px;
+}
+.config-panel-header {
+  padding: 0.75rem 1.25rem;
+  background: var(--bg);
+  border-bottom: 1px solid var(--border2);
+  display: flex; align-items: center; justify-content: space-between;
+}
+.config-panel-title {
+  font-size: 0.62rem; font-weight: 700; text-transform: uppercase;
+  letter-spacing: 0.1em; color: var(--text3);
+}
+.config-reset {
+  font-size: 0.68rem; color: var(--text3); background: none;
+  border: 1px solid var(--border2); border-radius: 4px;
+  cursor: pointer; font-family: var(--sans); padding: 0.2rem 0.55rem;
+  transition: all 0.15s;
+}
+.config-reset:hover { color: var(--red); border-color: rgba(192,57,43,0.3); }
+
+.config-body { padding: 1rem 1.25rem; display: flex; flex-direction: column; gap: 0; }
+.config-group { padding: 0.85rem 0; border-bottom: 1px solid var(--border); }
+.config-group:first-child { padding-top: 0; }
+.config-group:last-child { border-bottom: none; padding-bottom: 0; }
+.config-group-label {
+  font-size: 0.58rem; font-weight: 700; text-transform: uppercase;
+  letter-spacing: 0.12em; color: var(--text3); margin-bottom: 0.75rem;
+  display: flex; align-items: center; gap: 0.6rem;
+}
+.config-group-label::after { content: ''; flex: 1; height: 1px; background: var(--border); }
+
+.config-row {
+  display: grid; grid-template-columns: 148px 1fr;
+  align-items: center; gap: 0.75rem; margin-bottom: 0.6rem;
+}
+.config-row:last-child { margin-bottom: 0; }
+.config-field-label { font-size: 0.72rem; font-weight: 500; color: var(--text2); text-align: right; }
+.config-field-sub { font-size: 0.62rem; color: var(--text3); display: block; margin-top: 0.1rem; }
+
+.config-select {
+  appearance: none; -webkit-appearance: none;
+  background: var(--bg) url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='10' height='6'%3E%3Cpath d='M0 0l5 6 5-6z' fill='%238c8c86'/%3E%3C/svg%3E") no-repeat right 0.75rem center;
+  border: 1px solid var(--border2); border-radius: var(--r);
+  padding: 0.45rem 2.25rem 0.45rem 0.75rem;
+  font-size: 0.76rem; font-family: var(--sans); color: var(--text);
+  cursor: pointer; width: 100%; transition: border-color 0.15s;
+}
+.config-select:focus { outline: none; border-color: var(--accent); }
+.config-select:hover { border-color: var(--border2); background-color: var(--surface); }
+
+.config-slider-wrap { display: flex; align-items: center; gap: 0.65rem; }
+.config-slider {
+  flex: 1; -webkit-appearance: none; appearance: none;
+  height: 3px; background: var(--bg2); border-radius: 2px; outline: none; cursor: pointer;
+}
+.config-slider::-webkit-slider-thumb {
+  -webkit-appearance: none; width: 15px; height: 15px;
+  border-radius: 50%; background: var(--text); cursor: pointer;
+  border: 2px solid var(--surface); box-shadow: 0 1px 4px rgba(0,0,0,0.2);
+  transition: background 0.15s;
+}
+.config-slider:hover::-webkit-slider-thumb { background: var(--accent); }
+.config-slider-val {
+  font-family: var(--mono); font-size: 0.72rem; color: var(--text);
+  min-width: 36px; text-align: right; font-weight: 500;
+}
 
 /* Progress card */
 .progress-card {
@@ -993,109 +1083,116 @@ function CleanScreen({ uploadData, onCleaned }) {
             {/* Config panel */}
             {showConfig && (
               <div className="config-panel">
-                <div className="config-grid">
+                <div className="config-panel-header">
+                  <span className="config-panel-title">Pipeline Options</span>
+                  <button className="config-reset" onClick={reset}>↺ Reset defaults</button>
+                </div>
+                <div className="config-body">
 
-                  {/* Outlier action */}
-                  <div className="config-field">
-                    <label className="config-label">
-                      Outlier Action <span>what to do with outliers</span>
-                    </label>
-                    <select className="config-select" value={cfg.outlier_action} onChange={e => set('outlier_action', e.target.value)}>
-                      <option value="none">None — detect only, log to audit</option>
-                      <option value="flag">Flag — add _is_outlier columns</option>
-                      <option value="cap">Cap — winsorise to IQR bounds</option>
-                      <option value="remove">Remove — drop outlier rows</option>
-                    </select>
+                  {/* Outlier group */}
+                  <div className="config-group">
+                    <div className="config-group-label">Outlier Handling</div>
+
+                    <div className="config-row">
+                      <div className="config-field-label">
+                        Action
+                        <span className="config-field-sub">what to do with outliers</span>
+                      </div>
+                      <select className="config-select" value={cfg.outlier_action} onChange={e => set('outlier_action', e.target.value)}>
+                        <option value="none">None — log only</option>
+                        <option value="flag">Flag — add _is_outlier column</option>
+                        <option value="cap">Cap — winsorise to bounds</option>
+                        <option value="remove">Remove — drop outlier rows</option>
+                      </select>
+                    </div>
+
+                    <div className="config-row">
+                      <div className="config-field-label">
+                        Detection
+                        <span className="config-field-sub">algorithm</span>
+                      </div>
+                      <select className="config-select" value={cfg.outlier_method} onChange={e => set('outlier_method', e.target.value)}>
+                        <option value="iqr">IQR — interquartile range</option>
+                        <option value="zscore">Z-Score — std deviations</option>
+                      </select>
+                    </div>
+
+                    {cfg.outlier_method === 'iqr' && (
+                      <div className="config-row">
+                        <div className="config-field-label">
+                          IQR Multiplier
+                          <span className="config-field-sub">lower = stricter</span>
+                        </div>
+                        <div className="config-slider-wrap">
+                          <input type="range" className="config-slider"
+                            min="0.5" max="4" step="0.5"
+                            value={cfg.outlier_iqr_multiplier}
+                            onChange={e => set('outlier_iqr_multiplier', parseFloat(e.target.value))}
+                          />
+                          <span className="config-slider-val">{cfg.outlier_iqr_multiplier}</span>
+                        </div>
+                      </div>
+                    )}
+
+                    {cfg.outlier_method === 'zscore' && (
+                      <div className="config-row">
+                        <div className="config-field-label">
+                          Z Threshold
+                          <span className="config-field-sub">lower = stricter</span>
+                        </div>
+                        <div className="config-slider-wrap">
+                          <input type="range" className="config-slider"
+                            min="1" max="5" step="0.5"
+                            value={cfg.outlier_zscore_threshold || 3}
+                            onChange={e => set('outlier_zscore_threshold', parseFloat(e.target.value))}
+                          />
+                          <span className="config-slider-val">{cfg.outlier_zscore_threshold || 3}</span>
+                        </div>
+                      </div>
+                    )}
                   </div>
 
-                  {/* Outlier method */}
-                  <div className="config-field">
-                    <label className="config-label">
-                      Outlier Detection <span>algorithm</span>
-                    </label>
-                    <select className="config-select" value={cfg.outlier_method} onChange={e => set('outlier_method', e.target.value)}>
-                      <option value="iqr">IQR — interquartile range</option>
-                      <option value="zscore">Z-Score — standard deviations</option>
-                    </select>
-                  </div>
+                  {/* Missing values group */}
+                  <div className="config-group">
+                    <div className="config-group-label">Missing Values</div>
 
-                  {/* IQR multiplier */}
-                  {cfg.outlier_method === 'iqr' && (
-                    <div className="config-field">
-                      <label className="config-label">
-                        IQR Multiplier <span>lower = stricter</span>
-                      </label>
+                    <div className="config-row">
+                      <div className="config-field-label">
+                        Numeric fill
+                        <span className="config-field-sub">imputation strategy</span>
+                      </div>
+                      <select className="config-select" value={cfg.impute_numeric_strategy} onChange={e => set('impute_numeric_strategy', e.target.value)}>
+                        <option value="median">Median</option>
+                        <option value="mean">Mean</option>
+                        <option value="zero">Zero</option>
+                      </select>
+                    </div>
+
+                    <div className="config-row">
+                      <div className="config-field-label">
+                        Categorical fill
+                        <span className="config-field-sub">imputation strategy</span>
+                      </div>
+                      <select className="config-select" value={cfg.impute_categorical_strategy} onChange={e => set('impute_categorical_strategy', e.target.value)}>
+                        <option value="mode">Mode — most frequent</option>
+                        <option value="none">Leave as missing</option>
+                      </select>
+                    </div>
+
+                    <div className="config-row">
+                      <div className="config-field-label">
+                        Drop threshold
+                        <span className="config-field-sub">% missing before drop</span>
+                      </div>
                       <div className="config-slider-wrap">
                         <input type="range" className="config-slider"
-                          min="0.5" max="4" step="0.5"
-                          value={cfg.outlier_iqr_multiplier}
-                          onChange={e => set('outlier_iqr_multiplier', parseFloat(e.target.value))}
+                          min="0.3" max="1" step="0.05"
+                          value={cfg.missing_drop_threshold}
+                          onChange={e => set('missing_drop_threshold', parseFloat(e.target.value))}
                         />
-                        <span className="config-slider-val">{cfg.outlier_iqr_multiplier}</span>
+                        <span className="config-slider-val">{Math.round(cfg.missing_drop_threshold * 100)}%</span>
                       </div>
                     </div>
-                  )}
-
-                  {/* Z-score threshold */}
-                  {cfg.outlier_method === 'zscore' && (
-                    <div className="config-field">
-                      <label className="config-label">
-                        Z-Score Threshold <span>lower = stricter</span>
-                      </label>
-                      <div className="config-slider-wrap">
-                        <input type="range" className="config-slider"
-                          min="1" max="5" step="0.5"
-                          value={cfg.outlier_zscore_threshold || 3}
-                          onChange={e => set('outlier_zscore_threshold', parseFloat(e.target.value))}
-                        />
-                        <span className="config-slider-val">{cfg.outlier_zscore_threshold || 3}</span>
-                      </div>
-                    </div>
-                  )}
-
-                  <div className="config-divider" />
-
-                  {/* Numeric imputation */}
-                  <div className="config-field">
-                    <label className="config-label">
-                      Numeric Missing <span>fill strategy</span>
-                    </label>
-                    <select className="config-select" value={cfg.impute_numeric_strategy} onChange={e => set('impute_numeric_strategy', e.target.value)}>
-                      <option value="median">Median</option>
-                      <option value="mean">Mean</option>
-                      <option value="zero">Zero</option>
-                    </select>
-                  </div>
-
-                  {/* Categorical imputation */}
-                  <div className="config-field">
-                    <label className="config-label">
-                      Categorical Missing <span>fill strategy</span>
-                    </label>
-                    <select className="config-select" value={cfg.impute_categorical_strategy} onChange={e => set('impute_categorical_strategy', e.target.value)}>
-                      <option value="mode">Mode (most frequent)</option>
-                      <option value="none">Leave as missing</option>
-                    </select>
-                  </div>
-
-                  {/* Missing drop threshold */}
-                  <div className="config-field">
-                    <label className="config-label">
-                      Drop Column Threshold <span>% missing before drop</span>
-                    </label>
-                    <div className="config-slider-wrap">
-                      <input type="range" className="config-slider"
-                        min="0.3" max="1" step="0.05"
-                        value={cfg.missing_drop_threshold}
-                        onChange={e => set('missing_drop_threshold', parseFloat(e.target.value))}
-                      />
-                      <span className="config-slider-val">{Math.round(cfg.missing_drop_threshold * 100)}%</span>
-                    </div>
-                  </div>
-
-                  <div className="config-footer">
-                    <button className="config-reset" onClick={reset}>↺ Reset to defaults</button>
-                    <span className="config-hint">defaults are recommended for most datasets</span>
                   </div>
 
                 </div>
