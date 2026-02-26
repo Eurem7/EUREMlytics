@@ -65,6 +65,7 @@ def clean_data(
 
     return CleaningResponse(
         session_id=session_id,
+        raw_dataframe=df.head(10).to_dict(orient="records"),
         cleaned_dataframe=cleaned_df.to_dict(orient="records"),
         audit_log=result["audit_log"],
         column_quality_summary=result["column_quality_summary"],
