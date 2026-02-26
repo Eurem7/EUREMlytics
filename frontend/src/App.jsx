@@ -929,6 +929,20 @@ function CleanScreen({ uploadData, onCleaned }) {
   const [stepIdx, setStepIdx]   = useState(-1)
   const [done, setDone]         = useState(false)
   const [error, setError]       = useState('')
+  const [showConfig, setShowConfig] = useState(false)
+
+  // Config state — mirrors CleaningConfig defaults
+  const DEFAULTS = {
+    outlier_action:              'none',
+    outlier_method:              'iqr',
+    outlier_iqr_multiplier:      1.5,
+    impute_numeric_strategy:     'median',
+    impute_categorical_strategy: 'mode',
+    missing_drop_threshold:      0.60,
+  }
+  const [cfg, setCfg] = useState({ ...DEFAULTS })
+  const set = (k, v) => setCfg(prev => ({ ...prev, [k]: v }))
+  const reset = () => setCfg({ ...DEFAULTS })
 
   const run = async () => {
     setLoading(true); setError('')
@@ -939,7 +953,7 @@ function CleanScreen({ uploadData, onCleaned }) {
       i++; if (i >= STEPS.length) clearInterval(iv)
     }, 320)
     try {
-      const result = await cleanData(uploadData.session_id)
+      const result = await cleanData(uploadData.session_id, cfg)
       clearInterval(iv); setStepIdx(STEPS.length); setPct(100); setDone(true)
       setTimeout(() => onCleaned(result), 600)
     } catch(e) { clearInterval(iv); setError(e.message) }
@@ -965,13 +979,133 @@ function CleanScreen({ uploadData, onCleaned }) {
             ? 'Redirecting to your results…'
             : loading
             ? 'Running 8-stage cleaning pipeline…'
-            : 'Click below to run the full cleaning pipeline on your dataset.'}
+            : 'Configure options below, then run the pipeline.'}
         </p>
 
         {!loading && !done && pct === 0 && (
-          <button className="btn btn-primary btn-lg" onClick={run}>
-            Run Pipeline →
-          </button>
+          <>
+            {/* Config toggle */}
+            <button className="config-toggle" onClick={() => setShowConfig(v => !v)}>
+              <span className={`config-toggle-arrow${showConfig ? ' open' : ''}`}>›</span>
+              {showConfig ? 'Hide' : 'Show'} pipeline options
+            </button>
+
+            {/* Config panel */}
+            {showConfig && (
+              <div className="config-panel">
+                <div className="config-grid">
+
+                  {/* Outlier action */}
+                  <div className="config-field">
+                    <label className="config-label">
+                      Outlier Action <span>what to do with outliers</span>
+                    </label>
+                    <select className="config-select" value={cfg.outlier_action} onChange={e => set('outlier_action', e.target.value)}>
+                      <option value="none">None — detect only, log to audit</option>
+                      <option value="flag">Flag — add _is_outlier columns</option>
+                      <option value="cap">Cap — winsorise to IQR bounds</option>
+                      <option value="remove">Remove — drop outlier rows</option>
+                    </select>
+                  </div>
+
+                  {/* Outlier method */}
+                  <div className="config-field">
+                    <label className="config-label">
+                      Outlier Detection <span>algorithm</span>
+                    </label>
+                    <select className="config-select" value={cfg.outlier_method} onChange={e => set('outlier_method', e.target.value)}>
+                      <option value="iqr">IQR — interquartile range</option>
+                      <option value="zscore">Z-Score — standard deviations</option>
+                    </select>
+                  </div>
+
+                  {/* IQR multiplier */}
+                  {cfg.outlier_method === 'iqr' && (
+                    <div className="config-field">
+                      <label className="config-label">
+                        IQR Multiplier <span>lower = stricter</span>
+                      </label>
+                      <div className="config-slider-wrap">
+                        <input type="range" className="config-slider"
+                          min="0.5" max="4" step="0.5"
+                          value={cfg.outlier_iqr_multiplier}
+                          onChange={e => set('outlier_iqr_multiplier', parseFloat(e.target.value))}
+                        />
+                        <span className="config-slider-val">{cfg.outlier_iqr_multiplier}</span>
+                      </div>
+                    </div>
+                  )}
+
+                  {/* Z-score threshold */}
+                  {cfg.outlier_method === 'zscore' && (
+                    <div className="config-field">
+                      <label className="config-label">
+                        Z-Score Threshold <span>lower = stricter</span>
+                      </label>
+                      <div className="config-slider-wrap">
+                        <input type="range" className="config-slider"
+                          min="1" max="5" step="0.5"
+                          value={cfg.outlier_zscore_threshold || 3}
+                          onChange={e => set('outlier_zscore_threshold', parseFloat(e.target.value))}
+                        />
+                        <span className="config-slider-val">{cfg.outlier_zscore_threshold || 3}</span>
+                      </div>
+                    </div>
+                  )}
+
+                  <div className="config-divider" />
+
+                  {/* Numeric imputation */}
+                  <div className="config-field">
+                    <label className="config-label">
+                      Numeric Missing <span>fill strategy</span>
+                    </label>
+                    <select className="config-select" value={cfg.impute_numeric_strategy} onChange={e => set('impute_numeric_strategy', e.target.value)}>
+                      <option value="median">Median</option>
+                      <option value="mean">Mean</option>
+                      <option value="zero">Zero</option>
+                    </select>
+                  </div>
+
+                  {/* Categorical imputation */}
+                  <div className="config-field">
+                    <label className="config-label">
+                      Categorical Missing <span>fill strategy</span>
+                    </label>
+                    <select className="config-select" value={cfg.impute_categorical_strategy} onChange={e => set('impute_categorical_strategy', e.target.value)}>
+                      <option value="mode">Mode (most frequent)</option>
+                      <option value="none">Leave as missing</option>
+                    </select>
+                  </div>
+
+                  {/* Missing drop threshold */}
+                  <div className="config-field">
+                    <label className="config-label">
+                      Drop Column Threshold <span>% missing before drop</span>
+                    </label>
+                    <div className="config-slider-wrap">
+                      <input type="range" className="config-slider"
+                        min="0.3" max="1" step="0.05"
+                        value={cfg.missing_drop_threshold}
+                        onChange={e => set('missing_drop_threshold', parseFloat(e.target.value))}
+                      />
+                      <span className="config-slider-val">{Math.round(cfg.missing_drop_threshold * 100)}%</span>
+                    </div>
+                  </div>
+
+                  <div className="config-footer">
+                    <button className="config-reset" onClick={reset}>↺ Reset to defaults</button>
+                    <span className="config-hint">defaults are recommended for most datasets</span>
+                  </div>
+
+                </div>
+              </div>
+            )}
+
+            <button className="btn btn-primary btn-lg" onClick={run}>
+              Run Pipeline →
+            </button>
+          </>
         )}
 
         {(loading || pct > 0) && (
