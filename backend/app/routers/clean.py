@@ -5,8 +5,9 @@ Runs the EnterpriseDataEngine on an uploaded file and returns
 the full cleaning result as JSON.
 """
 
+import os
 import pandas as pd
-from fastapi import APIRouter, HTTPException, Query
+from fastapi import APIRouter, HTTPException, Query, Request
 from app.engine import EnterpriseDataEngine
 from app.config import CleaningConfig
 from app.schemas import CleaningResponse
@@ -32,6 +33,7 @@ def _get_dataframe(session_id: str | None) -> pd.DataFrame:
 
 @router.post("/", response_model=CleaningResponse)
 def clean_data(
+    request: Request,
     session_id: str | None = Query(default=None),
     outlier_method:              str   | None = Query(default=None, enum=["iqr", "zscore"]),
     outlier_action:              str   | None = Query(default=None, enum=["flag", "cap", "remove", "none"]),
@@ -42,6 +44,44 @@ def clean_data(
     missing_drop_threshold:      float | None = Query(default=None, ge=0.0, le=1.0),
 ):
     df = _get_dataframe(session_id)
+
+    # ── Row limit enforcement ──
+    FREE_ROW_LIMIT = 500
+    if len(df) > FREE_ROW_LIMIT:
+        # Check subscription via Supabase
+        import httpx as _httpx
+        from app.auth import get_current_user as _get_user
+        user = _get_user(request)
+        if not user:
+            raise HTTPException(
+                status_code=403,
+                detail=f"Free tier limit is {FREE_ROW_LIMIT} rows. Sign in and upgrade to Pro to clean larger files."
+            )
+        user_id = user.get("sub", "")
+        SUPABASE_URL = "https://lisyiprowqxybfttenud.supabase.co"
+        SUPABASE_SERVICE_KEY = os.getenv("SUPABASE_SERVICE_KEY", "")
+        r = _httpx.get(
+            f"{SUPABASE_URL}/rest/v1/subscriptions",
+            params={"user_id": f"eq.{user_id}", "select": "status,current_period_end"},
+            headers={"apikey": SUPABASE_SERVICE_KEY, "Authorization": f"Bearer {SUPABASE_SERVICE_KEY}"},
+        )
+        rows_data = r.json() if r.status_code == 200 else []
+        is_active = False
+        if rows_data:
+            from datetime import datetime, timezone
+            sub = rows_data[0]
+            if sub.get("status") == "active":
+                period_end = sub.get("current_period_end")
+                if period_end:
+                    if datetime.fromisoformat(period_end) > datetime.now(timezone.utc):
+                        is_active = True
+                else:
+                    is_active = True
+        if not is_active:
+            raise HTTPException(
+                status_code=403,
+                detail=f"Free tier limit is {FREE_ROW_LIMIT} rows. Upgrade to Pro to clean larger files."
+            )
 
     # Snapshot raw data BEFORE engine runs — engine may modify df in place
     raw_preview = df.head(10).copy().to_dict(orient="records")
