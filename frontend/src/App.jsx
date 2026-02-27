@@ -1895,8 +1895,23 @@ export default function App() {
   const [result, setResult]         = useState(null)
   const [user, setUser]             = useState(null)
   const [authReason, setAuthReason] = useState(null) // 'row_limit' | 'signin'
-  const [authChecked, setAuthChecked] = useState(false)
-  const [legalModal, setLegalModal] = useState(null)
+  const [authChecked, setAuthChecked]   = useState(false)
+  const [legalModal, setLegalModal]     = useState(null)
+  const [subscription, setSubscription] = useState('free')
+  const [subChecked, setSubChecked]     = useState(false)
+
+  const API = import.meta.env.VITE_API_URL || 'https://euremlytics-2.onrender.com'
+
+  const fetchSubscription = useCallback(async (token) => {
+    try {
+      const res = await fetch(`${API}/payments/subscription`, {
+        headers: token ? { 'Authorization': `Bearer ${token}` } : {}
+      })
+      const data = await res.json()
+      setSubscription(data.status || 'free')
+    } catch { setSubscription('free') }
+    finally { setSubChecked(true) }
+  }, [API])
 
   // Verify payment when Paystack redirects back
   useEffect(() => {
@@ -1936,8 +1951,8 @@ export default function App() {
       else { setSubscription('free'); setSubChecked(true) }
       if (session?.user && screen === 'auth') setScreen('upload')
     })
-    return () => subscription.unsubscribe()
-  }, [])
+    return () => authSub.unsubscribe()
+  }, [fetchSubscription])
 
   const handleUploaded = (data) => {
     // Not signed in → auth wall
