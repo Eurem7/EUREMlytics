@@ -1,5 +1,22 @@
 import { useState, useCallback, useRef, useEffect } from 'react'
 import { uploadFile, cleanData, csvDownloadUrl, pdfDownloadUrl, reportHtmlUrl } from './api/client.js'
+
+// Fetch-based download — works cross-origin unlike <a download>
+async function triggerDownload(url, filename) {
+  try {
+    const res = await fetch(url)
+    if (!res.ok) throw new Error('Download failed')
+    const blob = await res.blob()
+    const blobUrl = URL.createObjectURL(blob)
+    const a = document.createElement('a')
+    a.href = blobUrl; a.download = filename
+    document.body.appendChild(a); a.click()
+    document.body.removeChild(a)
+    URL.revokeObjectURL(blobUrl)
+  } catch(e) {
+    alert('Download failed: ' + e.message)
+  }
+}
 import { supabase } from './lib/supabase.js'
 import AuthScreen from './AuthScreen.jsx'
 import PaywallScreen from './PaywallScreen.jsx'
@@ -975,6 +992,85 @@ tr:hover td { background: var(--surface2); }
 
 /* ── RESPONSIVE ── */
 /* ── MOBILE: 680px and below ── */
+
+/* ── Feedback widget ── */
+.feedback-fab {
+  position: fixed; bottom: 1.5rem; right: 1.5rem; z-index: 500;
+  width: 44px; height: 44px; border-radius: 50%;
+  background: var(--text); color: #fff;
+  border: none; cursor: pointer; font-size: 1.1rem;
+  display: flex; align-items: center; justify-content: center;
+  box-shadow: 0 4px 16px rgba(0,0,0,0.18);
+  transition: all 0.2s;
+}
+.feedback-fab:hover { transform: translateY(-2px) scale(1.05); box-shadow: 0 8px 24px rgba(0,0,0,0.22); }
+
+.feedback-modal {
+  position: fixed; inset: 0; z-index: 600;
+  background: rgba(0,0,0,0.4); backdrop-filter: blur(4px);
+  display: flex; align-items: flex-end; justify-content: flex-end;
+  padding: 1.5rem; animation: fadeIn 0.2s ease;
+}
+.feedback-card {
+  background: var(--surface); border: 1px solid var(--border2);
+  border-radius: var(--r3); box-shadow: 0 24px 64px rgba(0,0,0,0.2);
+  width: 100%; max-width: 360px;
+  animation: fadeUp 0.25s ease;
+}
+.feedback-head {
+  padding: 1rem 1.25rem;
+  border-bottom: 1px solid var(--border);
+  display: flex; align-items: center; justify-content: space-between;
+}
+.feedback-title { font-size: 0.85rem; font-weight: 700; }
+.feedback-close {
+  width: 26px; height: 26px; border-radius: 6px;
+  background: var(--bg2); border: 1px solid var(--border2);
+  cursor: pointer; font-size: 0.8rem; color: var(--text3);
+  display: flex; align-items: center; justify-content: center;
+  transition: all 0.15s;
+}
+.feedback-close:hover { color: var(--text); }
+.feedback-body { padding: 1.1rem 1.25rem 1.25rem; }
+.feedback-label {
+  font-size: 0.7rem; font-weight: 600; color: var(--text2);
+  margin-bottom: 0.5rem; display: block;
+}
+.feedback-types {
+  display: flex; gap: 0.5rem; margin-bottom: 0.85rem; flex-wrap: wrap;
+}
+.feedback-type {
+  font-size: 0.68rem; padding: 0.25rem 0.65rem; border-radius: 99px;
+  border: 1px solid var(--border2); background: var(--bg);
+  cursor: pointer; font-family: var(--sans); color: var(--text2);
+  transition: all 0.15s;
+}
+.feedback-type:hover { border-color: var(--accent); color: var(--accent); }
+.feedback-type.selected { background: var(--accent); color: #fff; border-color: var(--accent); }
+.feedback-textarea {
+  width: 100%; min-height: 90px; border: 1px solid var(--border2);
+  border-radius: var(--r); padding: 0.65rem 0.75rem;
+  font-size: 0.78rem; font-family: var(--sans); color: var(--text);
+  background: var(--bg); resize: vertical; outline: none;
+  transition: border-color 0.15s; margin-bottom: 0.85rem;
+  box-sizing: border-box;
+}
+.feedback-textarea:focus { border-color: var(--accent); background: var(--surface); }
+.feedback-textarea::placeholder { color: var(--text3); }
+.feedback-submit {
+  width: 100%; height: 36px; border-radius: var(--r);
+  background: var(--text); color: #fff; font-size: 0.78rem;
+  font-weight: 600; border: none; cursor: pointer; font-family: var(--sans);
+  transition: all 0.15s;
+}
+.feedback-submit:hover { background: #2a2a28; }
+.feedback-submit:disabled { background: var(--text3); cursor: not-allowed; }
+.feedback-success {
+  text-align: center; padding: 1.5rem;
+  font-size: 0.8rem; color: var(--green);
+}
+.feedback-success-icon { font-size: 2rem; margin-bottom: 0.5rem; }
+
 @media (max-width: 680px) {
 
   /* Topbar — hide step track and email, keep logo + sign in/out */
@@ -1527,8 +1623,8 @@ function Dashboard({ result, sessionId, onViewReport }) {
           </div>
         </div>
         <div className="btn-group">
-          <a className="btn btn-ghost btn-sm" href={csvDownloadUrl(sessionId)} download>↓ CSV</a>
-          <a className="btn btn-ghost btn-sm" href={pdfDownloadUrl(sessionId)} download>↓ PDF</a>
+          <button className="btn btn-ghost btn-sm" onClick={() => triggerDownload(csvDownloadUrl(sessionId), 'cleaned.csv')}>↓ CSV</button>
+          <button className="btn btn-ghost btn-sm" onClick={() => triggerDownload(pdfDownloadUrl(sessionId), 'oxdemi_report.pdf')}>↓ PDF</button>
           <button className="btn btn-primary" onClick={onViewReport}>View Report →</button>
         </div>
       </div>
@@ -1772,8 +1868,8 @@ function ReportScreen({ sessionId, onBack }) {
         <button className="btn btn-ghost btn-sm" onClick={onBack}>← Dashboard</button>
         <span className="report-label">Full Quality Report</span>
         <div style={{marginLeft:'auto', display:'flex', gap:'0.5rem'}}>
-          <a className="btn btn-ghost btn-sm" href={csvDownloadUrl(sessionId)} download>↓ CSV</a>
-          <a className="btn btn-green-solid btn-sm" href={pdfDownloadUrl(sessionId)} download>↓ PDF</a>
+          <button className="btn btn-ghost btn-sm" onClick={() => triggerDownload(csvDownloadUrl(sessionId), 'cleaned.csv')}>↓ CSV</button>
+          <button className="btn btn-green-solid btn-sm" onClick={() => triggerDownload(pdfDownloadUrl(sessionId), 'oxdemi_report.pdf')}>↓ PDF</button>
         </div>
       </div>
       <div className="report-body">
@@ -1782,6 +1878,96 @@ function ReportScreen({ sessionId, onBack }) {
         </div>
       </div>
     </div>
+  )
+}
+
+
+// ─────────────────────────────────────────────────────────────
+// Feedback Widget
+// ─────────────────────────────────────────────────────────────
+function FeedbackWidget({ user }) {
+  const [open, setOpen]       = useState(false)
+  const [type, setType]       = useState('bug')
+  const [text, setText]       = useState('')
+  const [sending, setSending] = useState(false)
+  const [sent, setSent]       = useState(false)
+
+  const TYPES = ['bug', 'idea', 'praise', 'other']
+
+  const handleSubmit = async () => {
+    if (!text.trim()) return
+    setSending(true)
+    // Send to mailto as fallback — swap for a real endpoint later
+    const subject = encodeURIComponent(`Oxdemi feedback: ${type}`)
+    const body    = encodeURIComponent(`Type: ${type}\nFrom: ${user?.email || 'anonymous'}\n\n${text}`)
+    window.open(`mailto:hello@oxdemi.io?subject=${subject}&body=${body}`)
+    setTimeout(() => {
+      setSent(true)
+      setSending(false)
+      setTimeout(() => { setSent(false); setText(''); setType('bug'); setOpen(false) }, 2000)
+    }, 500)
+  }
+
+  useEffect(() => {
+    if (!open) return
+    const handler = (e) => { if (e.key === 'Escape') setOpen(false) }
+    window.addEventListener('keydown', handler)
+    return () => window.removeEventListener('keydown', handler)
+  }, [open])
+
+  return (
+    <>
+      <button className="feedback-fab" onClick={() => setOpen(true)} title="Send feedback">
+        💬
+      </button>
+      {open && (
+        <div className="feedback-modal" onClick={() => setOpen(false)}>
+          <div className="feedback-card" onClick={e => e.stopPropagation()}>
+            <div className="feedback-head">
+              <span className="feedback-title">Send feedback</span>
+              <button className="feedback-close" onClick={() => setOpen(false)}>✕</button>
+            </div>
+            <div className="feedback-body">
+              {sent ? (
+                <div className="feedback-success">
+                  <div className="feedback-success-icon">✓</div>
+                  Thanks for your feedback!
+                </div>
+              ) : (
+                <>
+                  <label className="feedback-label">Type</label>
+                  <div className="feedback-types">
+                    {TYPES.map(t => (
+                      <button
+                        key={t} className={`feedback-type${type===t?' selected':''}`}
+                        onClick={() => setType(t)}
+                      >
+                        {t === 'bug' ? '🐛 Bug' : t === 'idea' ? '💡 Idea' : t === 'praise' ? '⭐ Praise' : '💬 Other'}
+                      </button>
+                    ))}
+                  </div>
+                  <label className="feedback-label">Message</label>
+                  <textarea
+                    className="feedback-textarea"
+                    placeholder="Tell us what's on your mind…"
+                    value={text}
+                    onChange={e => setText(e.target.value)}
+                    autoFocus
+                  />
+                  <button
+                    className="feedback-submit"
+                    onClick={handleSubmit}
+                    disabled={sending || !text.trim()}
+                  >
+                    {sending ? 'Sending…' : 'Send feedback →'}
+                  </button>
+                </>
+              )}
+            </div>
+          </div>
+        </div>
+      )}
+    </>
   )
 }
 
@@ -2081,6 +2267,8 @@ export default function App() {
           {legalModal && (
             <LegalModal type={legalModal} onClose={() => setLegalModal(null)} />
           )}
+
+          <FeedbackWidget user={user} />
         </>
       )}
     </>
