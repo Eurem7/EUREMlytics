@@ -2,6 +2,7 @@ import { useState, useCallback, useRef, useEffect } from 'react'
 import { uploadFile, cleanData, csvDownloadUrl, pdfDownloadUrl, reportHtmlUrl } from './api/client.js'
 import { supabase } from './lib/supabase.js'
 import AuthScreen from './AuthScreen.jsx'
+import PaywallScreen from './PaywallScreen.jsx'
 
 // ─────────────────────────────────────────────────────────────
 // Global styles — Precision Instrument aesthetic
@@ -1897,26 +1898,59 @@ export default function App() {
   const [authChecked, setAuthChecked] = useState(false)
   const [legalModal, setLegalModal] = useState(null)
 
+  // Verify payment when Paystack redirects back
+  useEffect(() => {
+    const params = new URLSearchParams(window.location.search)
+    if (params.get('payment') === 'verify') {
+      const ref = params.get('trxref') || params.get('reference')
+      if (ref) {
+        // Clean URL
+        window.history.replaceState({}, '', window.location.pathname)
+        // Verify with backend
+        supabase.auth.getSession().then(async ({ data: { session } }) => {
+          if (!session) return
+          try {
+            const res = await fetch(
+              `${import.meta.env.VITE_API_URL || 'https://euremlytics-2.onrender.com'}/payments/verify?reference=${ref}`,
+              { headers: { 'Authorization': `Bearer ${session.access_token}` } }
+            )
+            const data = await res.json()
+            if (data.status === 'active') setSubscription('active')
+          } catch(e) { console.error('Payment verification failed', e) }
+        })
+      }
+    }
+  }, [])
+
   // Listen for auth state changes
   useEffect(() => {
     supabase.auth.getSession().then(({ data: { session } }) => {
       setUser(session?.user || null)
       setAuthChecked(true)
+      if (session?.access_token) fetchSubscription(session.access_token)
+      else setSubChecked(true)
     })
-    const { data: { subscription } } = supabase.auth.onAuthStateChange((_event, session) => {
+    const { data: { subscription: authSub } } = supabase.auth.onAuthStateChange((_event, session) => {
       setUser(session?.user || null)
-      // If user just signed in and we were showing auth screen, go back to upload
+      if (session?.access_token) fetchSubscription(session.access_token)
+      else { setSubscription('free'); setSubChecked(true) }
       if (session?.user && screen === 'auth') setScreen('upload')
     })
     return () => subscription.unsubscribe()
   }, [])
 
   const handleUploaded = (data) => {
-    // Check row limit for non-signed-in users
+    // Not signed in → auth wall
     if (!user && data.rows > FREE_ROW_LIMIT) {
       setUploadData(data)
       setAuthReason('row_limit')
       setScreen('auth')
+      return
+    }
+    // Signed in but free tier → paywall
+    if (user && subscription !== 'active' && data.rows > FREE_ROW_LIMIT) {
+      setUploadData(data)
+      setScreen('paywall')
       return
     }
     setUploadData(data)
@@ -1974,6 +2008,13 @@ export default function App() {
 
           {screen === 'upload' && (
             <UploadScreen onUploaded={handleUploaded} />
+          )}
+          {screen === 'paywall' && (
+            <PaywallScreen
+              user={user}
+              onBack={() => setScreen('upload')}
+              onSubscribed={() => { setSubscription('active'); setScreen('clean') }}
+            />
           )}
           {screen === 'clean' && uploadData && (
             <CleanScreen uploadData={uploadData} onCleaned={r => { setResult(r); setScreen('dashboard') }} />
