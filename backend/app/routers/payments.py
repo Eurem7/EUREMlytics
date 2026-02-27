@@ -16,7 +16,21 @@ from datetime import datetime, timedelta, timezone
 import httpx
 from fastapi import APIRouter, HTTPException, Request, Query
 from fastapi.responses import JSONResponse
-from app.auth import get_current_user
+from jose import jwt, JWTError
+
+SUPABASE_JWT_SECRET_KEY = os.getenv("SUPABASE_JWT_SECRET", "eeVjr4TPk3WzjvLwrXQF5hwTAgHrPeqjNSLqTU9quWcYpnJegwNB3uyrflKRrlNoJtfCSPe8tBUE+TexJLBY9w==")
+
+def get_current_user(request: Request):
+    auth_header = request.headers.get("Authorization", "")
+    if not auth_header.startswith("Bearer "):
+        return None
+    token = auth_header.split(" ", 1)[1].strip()
+    if not token:
+        return None
+    try:
+        return jwt.decode(token, SUPABASE_JWT_SECRET_KEY, algorithms=["HS256"], options={"verify_aud": False})
+    except JWTError:
+        return None
 
 router = APIRouter(prefix="/payments", tags=["payments"])
 
