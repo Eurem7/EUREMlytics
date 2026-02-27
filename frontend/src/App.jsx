@@ -3,6 +3,7 @@ import { uploadFile, cleanData, csvDownloadUrl, pdfDownloadUrl, reportHtmlUrl } 
 import { supabase } from './lib/supabase.js'
 import AuthScreen from './AuthScreen.jsx'
 import PaywallScreen from './PaywallScreen.jsx'
+import UserDashboard from './UserDashboard.jsx'
 
 // ─────────────────────────────────────────────────────────────
 // Global styles — Precision Instrument aesthetic
@@ -1119,7 +1120,7 @@ const STEPS = ['Headers','Strings','Units','Harmonise','Dupes','Types','Outliers
 // ─────────────────────────────────────────────────────────────
 // Topbar
 // ─────────────────────────────────────────────────────────────
-function Topbar({ step, sessionId, user, onSignIn, onSignOut }) {
+function Topbar({ step, sessionId, user, onSignIn, onSignOut, onAccount }) {
   const STEPS_NAV = ['Upload','Clean','Results']
   return (
     <div className="topbar">
@@ -1143,8 +1144,8 @@ function Topbar({ step, sessionId, user, onSignIn, onSignOut }) {
         {sessionId && <span className="topbar-badge">sess: {sessionId.slice(0,8)}…</span>}
         {user ? (
           <div className="topbar-user">
-            <div className="topbar-avatar">{(user.email||'?')[0].toUpperCase()}</div>
-            <span className="topbar-email">{user.email}</span>
+            <div className="topbar-avatar" onClick={onAccount} style={{cursor:'pointer'}} title="My account">{(user.email||'?')[0].toUpperCase()}</div>
+            <span className="topbar-email" onClick={onAccount} style={{cursor:'pointer'}}>{user.email}</span>
             <button className="topbar-signout" onClick={onSignOut}>Sign out</button>
           </div>
         ) : (
@@ -2025,6 +2026,7 @@ export default function App() {
             user={user}
             onSignIn={() => { setAuthReason('signin'); setScreen('auth') }}
             onSignOut={handleSignOut}
+            onAccount={() => { setPrevScreen(screen); setScreen('account') }}
           />
 
           {screen === 'upload' && (
@@ -2035,6 +2037,13 @@ export default function App() {
               user={user}
               onBack={() => setScreen('upload')}
               onSubscribed={() => { setSubscription('active'); setScreen('clean') }}
+            />
+          )}
+          {screen === 'account' && (
+            <UserDashboard
+              user={user}
+              onBack={() => setScreen(prevScreen)}
+              onUpgrade={() => setScreen('paywall')}
             />
           )}
           {screen === 'clean' && uploadData && (
