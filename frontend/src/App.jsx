@@ -181,19 +181,28 @@ body {
   border-radius: 4px;
   letter-spacing: 0.02em;
 }
-.topbar-user {
+.topbar-user { display: flex; align-items: center; gap: 0.5rem; }
+.topbar-account-btn {
   display: flex; align-items: center; gap: 0.5rem;
+  background: var(--bg2); border: 1px solid var(--border2);
+  border-radius: 99px; padding: 0.22rem 0.65rem 0.22rem 0.3rem;
+  cursor: pointer; transition: all 0.15s; font-family: var(--sans);
+}
+.topbar-account-btn:hover {
+  background: var(--surface); border-color: var(--accent);
+  box-shadow: 0 0 0 2px rgba(26,107,255,0.1);
 }
 .topbar-avatar {
-  width: 24px; height: 24px; border-radius: 50%;
+  width: 22px; height: 22px; border-radius: 50%;
   background: var(--text); color: #fff;
   display: flex; align-items: center; justify-content: center;
-  font-size: 0.6rem; font-weight: 700; font-family: var(--mono);
+  font-size: 0.58rem; font-weight: 700; font-family: var(--mono);
   flex-shrink: 0;
 }
 .topbar-email {
-  font-family: var(--mono); font-size: 0.62rem; color: var(--text3);
+  font-family: var(--mono); font-size: 0.62rem; color: var(--text2);
   max-width: 140px; overflow: hidden; text-overflow: ellipsis; white-space: nowrap;
+  font-weight: 500;
 }
 .topbar-signout {
   font-size: 0.68rem; font-weight: 500; color: var(--text3);
@@ -1144,8 +1153,11 @@ function Topbar({ step, sessionId, user, onSignIn, onSignOut, onAccount }) {
         {sessionId && <span className="topbar-badge">sess: {sessionId.slice(0,8)}…</span>}
         {user ? (
           <div className="topbar-user">
-            <div className="topbar-avatar" onClick={onAccount} style={{cursor:'pointer'}} title="My account">{(user.email||'?')[0].toUpperCase()}</div>
-            <span className="topbar-email" onClick={onAccount} style={{cursor:'pointer'}}>{user.email}</span>
+            <button className="topbar-account-btn" onClick={onAccount} title="My account">
+              <div className="topbar-avatar">{(user.email||'?')[0].toUpperCase()}</div>
+              <span className="topbar-email">{user.email}</span>
+              <span style={{fontSize:'0.6rem', color:'var(--text3)', marginLeft:'0.1rem'}}>▾</span>
+            </button>
             <button className="topbar-signout" onClick={onSignOut}>Sign out</button>
           </div>
         ) : (
