@@ -16,21 +16,28 @@ from datetime import datetime, timedelta, timezone
 import httpx
 from fastapi import APIRouter, HTTPException, Request, Query
 from fastapi.responses import JSONResponse
-from jose import jwt, JWTError
-
-SUPABASE_JWT_SECRET_KEY = os.getenv("SUPABASE_JWT_SECRET", "eeVjr4TPk3WzjvLwrXQF5hwTAgHrPeqjNSLqTU9quWcYpnJegwNB3uyrflKRrlNoJtfCSPe8tBUE+TexJLBY9w==")
-
-def get_current_user(request: Request):
+def get_token(request: Request):
     auth_header = request.headers.get("Authorization", "")
     if not auth_header.startswith("Bearer "):
         return None
-    token = auth_header.split(" ", 1)[1].strip()
+    return auth_header.split(" ", 1)[1].strip() or None
+
+async def get_current_user(request: Request):
+    token = get_token(request)
     if not token:
         return None
-    try:
-        return jwt.decode(token, SUPABASE_JWT_SECRET_KEY, algorithms=["HS256"], options={"verify_aud": False})
-    except JWTError:
+    async with httpx.AsyncClient() as client:
+        r = await client.get(
+            f"{SUPABASE_URL}/auth/v1/user",
+            headers={
+                "Authorization": f"Bearer {token}",
+                "apikey": SUPABASE_ANON_KEY,
+            },
+        )
+    if r.status_code != 200:
         return None
+    u = r.json()
+    return {"sub": u.get("id"), "email": u.get("email")}
 
 router = APIRouter(prefix="/payments", tags=["payments"])
 
@@ -38,6 +45,7 @@ PAYSTACK_SECRET_KEY = os.getenv("PAYSTACK_SECRET_KEY", "")
 PAYSTACK_BASE       = "https://api.paystack.co"
 PLAN_AMOUNT         = 1000000  # ₦10,000 in kobo
 SUPABASE_URL        = "https://lisyiprowqxybfttenud.supabase.co"
+SUPABASE_ANON_KEY   = "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6Imxpc3lpcHJvd3F4eWJmdHRlbnVkIiwicm9sZSI6ImFub24iLCJpYXQiOjE3NzIxMzk3MzQsImV4cCI6MjA4NzcxNTczNH0.hwyd44Vjyi98x_F6aSCiUD-jn8IGLPo0TLLJvS5RAQ8"
 SUPABASE_SERVICE_KEY = os.getenv("SUPABASE_SERVICE_KEY", "")
 
 
@@ -83,9 +91,9 @@ async def _supabase_upsert_subscription(user_id: str, data: dict):
 
 
 @router.post("/initialize")
-async def initialize_payment(request: Request):
+async async def initialize_payment(request: Request):
     """Initialize a Paystack transaction for the current user."""
-    user = get_current_user(request)
+    user = await get_current_user(request)
     if not user:
         raise HTTPException(status_code=401, detail="Authentication required.")
 
@@ -125,9 +133,9 @@ async def initialize_payment(request: Request):
 
 
 @router.get("/verify")
-async def verify_payment(request: Request, reference: str = Query(...)):
+async async def verify_payment(request: Request, reference: str = Query(...)):
     """Verify a Paystack payment and activate subscription."""
-    user = get_current_user(request)
+    user = await get_current_user(request)
     if not user:
         raise HTTPException(status_code=401, detail="Authentication required.")
 
@@ -159,9 +167,9 @@ async def verify_payment(request: Request, reference: str = Query(...)):
 
 
 @router.get("/subscription")
-async def get_subscription(request: Request):
+async async def get_subscription(request: Request):
     """Get current user's subscription status."""
-    user = get_current_user(request)
+    user = await get_current_user(request)
     if not user:
         return {"status": "free"}
 
