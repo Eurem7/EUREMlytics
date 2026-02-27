@@ -91,7 +91,7 @@ async def _supabase_upsert_subscription(user_id: str, data: dict):
 
 
 @router.post("/initialize")
-async async def initialize_payment(request: Request):
+async def initialize_payment(request: Request):
     """Initialize a Paystack transaction for the current user."""
     user = await get_current_user(request)
     if not user:
@@ -133,7 +133,7 @@ async async def initialize_payment(request: Request):
 
 
 @router.get("/verify")
-async async def verify_payment(request: Request, reference: str = Query(...)):
+async def verify_payment(request: Request, reference: str = Query(...)):
     """Verify a Paystack payment and activate subscription."""
     user = await get_current_user(request)
     if not user:
@@ -167,7 +167,7 @@ async async def verify_payment(request: Request, reference: str = Query(...)):
 
 
 @router.get("/subscription")
-async async def get_subscription(request: Request):
+async def get_subscription(request: Request):
     """Get current user's subscription status."""
     user = await get_current_user(request)
     if not user:
