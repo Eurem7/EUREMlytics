@@ -1897,15 +1897,24 @@ function FeedbackWidget({ user }) {
   const handleSubmit = async () => {
     if (!text.trim()) return
     setSending(true)
-    // Send to mailto as fallback — swap for a real endpoint later
-    const subject = encodeURIComponent(`Oxdemi feedback: ${type}`)
-    const body    = encodeURIComponent(`Type: ${type}\nFrom: ${user?.email || 'anonymous'}\n\n${text}`)
-    window.open(`mailto:hello@oxdemi.io?subject=${subject}&body=${body}`)
-    setTimeout(() => {
+    try {
+      const res = await fetch('https://euremlytics-2.onrender.com/feedback/', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          type:    type,
+          message: text,
+          email:   user?.email || null,
+        })
+      })
+      if (!res.ok) throw new Error('Failed to send')
       setSent(true)
+      setTimeout(() => { setSent(false); setText(''); setType('bug'); setOpen(false) }, 2500)
+    } catch(e) {
+      alert('Could not send feedback. Please try again.')
+    } finally {
       setSending(false)
-      setTimeout(() => { setSent(false); setText(''); setType('bug'); setOpen(false) }, 2000)
-    }, 500)
+    }
   }
 
   useEffect(() => {
