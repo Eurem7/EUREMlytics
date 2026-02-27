@@ -1,7 +1,5 @@
-"""
-main.py
-=======
-FastAPI application entry point.
+
+
 """
 
 from fastapi import FastAPI
@@ -47,3 +45,4 @@ def root():
         "clean":   "POST /clean/?session_id=<id>",
         "report":  "GET  /report/html?session_id=<id>",
     }
+
