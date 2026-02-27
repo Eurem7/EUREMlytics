@@ -1899,15 +1899,17 @@ export default function App() {
       <style>{G}</style>
 
       {screen === 'auth' ? (
-        <AuthScreen
-          onAuth={handleAuth}
-          reason={authReason}
-          onPrivacy={() => setLegalModal('privacy')}
-          onTerms={() => setLegalModal('terms')}
-        />
-        {legalModal && (
-          <LegalModal type={legalModal} onClose={() => setLegalModal(null)} />
-        )}
+        <>
+          <AuthScreen
+            onAuth={handleAuth}
+            reason={authReason}
+            onPrivacy={() => setLegalModal('privacy')}
+            onTerms={() => setLegalModal('terms')}
+          />
+          {legalModal && (
+            <LegalModal type={legalModal} onClose={() => setLegalModal(null)} />
+          )}
+        </>
       ) : (
         <>
           <Topbar
