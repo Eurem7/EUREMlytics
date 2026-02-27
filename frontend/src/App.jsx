@@ -1895,11 +1895,12 @@ export default function App() {
   const [uploadData, setUploadData] = useState(null)
   const [result, setResult]         = useState(null)
   const [user, setUser]             = useState(null)
-  const [authReason, setAuthReason] = useState(null) // 'row_limit' | 'signin'
+  const [authReason, setAuthReason] = useState(null)
   const [authChecked, setAuthChecked]   = useState(false)
   const [legalModal, setLegalModal]     = useState(null)
   const [subscription, setSubscription] = useState('free')
   const [subChecked, setSubChecked]     = useState(false)
+  const [prevScreen, setPrevScreen]     = useState('upload')
 
   const fetchSubscription = async (token) => {
     try {
