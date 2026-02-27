@@ -1,4 +1,4 @@
-import { useState, useCallback, useRef, useEffect } from 'react'
+import { useState, useRef, useEffect } from 'react'
 import { uploadFile, cleanData, csvDownloadUrl, pdfDownloadUrl, reportHtmlUrl } from './api/client.js'
 import { supabase } from './lib/supabase.js'
 import AuthScreen from './AuthScreen.jsx'
@@ -1900,18 +1900,17 @@ export default function App() {
   const [subscription, setSubscription] = useState('free')
   const [subChecked, setSubChecked]     = useState(false)
 
-  const API = import.meta.env.VITE_API_URL || 'https://euremlytics-2.onrender.com'
-
-  const fetchSubscription = useCallback(async (token) => {
+  const fetchSubscription = async (token) => {
     try {
-      const res = await fetch(`${API}/payments/subscription`, {
-        headers: token ? { 'Authorization': `Bearer ${token}` } : {}
-      })
+      const res = await fetch(
+        'https://euremlytics-2.onrender.com/payments/subscription',
+        { headers: token ? { 'Authorization': `Bearer ${token}` } : {} }
+      )
       const data = await res.json()
       setSubscription(data.status || 'free')
-    } catch { setSubscription('free') }
+    } catch(e) { setSubscription('free') }
     finally { setSubChecked(true) }
-  }, [API])
+  }
 
   // Verify payment when Paystack redirects back
   useEffect(() => {
@@ -1952,7 +1951,7 @@ export default function App() {
       if (session?.user && screen === 'auth') setScreen('upload')
     })
     return () => authSub.unsubscribe()
-  }, [fetchSubscription])
+  }, [])
 
   const handleUploaded = (data) => {
     // Not signed in → auth wall
