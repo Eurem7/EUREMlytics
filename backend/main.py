@@ -7,7 +7,7 @@ FastAPI application entry point.
 from fastapi import FastAPI
 from fastapi.middleware.cors import CORSMiddleware
 
-from app.routers import upload, clean, report, payments
+from app.routers import upload, clean, report, payments, feedback
 
 app = FastAPI(
     title="Oxdemi API",
@@ -32,6 +32,7 @@ app.include_router(upload.router)
 app.include_router(clean.router)
 app.include_router(report.router)
 app.include_router(payments.router)
+app.include_router(feedback.router)
 
 @app.get("/health", tags=["meta"])
 def health():
