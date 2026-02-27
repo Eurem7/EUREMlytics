@@ -963,14 +963,66 @@ tr:hover td { background: var(--surface2); }
 }
 
 /* ── RESPONSIVE ── */
+/* ── MOBILE: 680px and below ── */
 @media (max-width: 680px) {
-  .stat-strip, .stat-strip-2 { grid-template-columns: repeat(2,1fr); }
+
+  /* Topbar — hide step track and email, keep logo + sign in/out */
+  .topbar { padding: 0 1rem; gap: 0.75rem; }
+  .topbar-divider { display: none; }
+  .step-track { display: none; }
+  .topbar-email { display: none; }
+  .topbar-badge { display: none; }
+
+  /* Page padding */
+  .page { padding: 1.5rem 1rem; }
+
+  /* Upload screen */
+  .upload-layout { grid-template-columns: 1fr; gap: 1.5rem; padding-top: 1rem; }
+  .upload-right { display: none; }
+  .upload-h1 { font-size: 1.9rem; }
+  .upload-hero-text { padding-top: 0.5rem; }
+
+  /* Clean screen */
+  .clean-layout { padding: 1.5rem 0; }
+  .clean-h2 { font-size: 1.4rem; }
+  .config-panel { max-width: 100%; }
+  .config-row { grid-template-columns: 1fr; gap: 0.35rem; }
+  .config-field-label { text-align: left; }
   .steps-grid { grid-template-columns: repeat(4,1fr); }
-  .dash-header { flex-direction: column; }
+  .step-cell-name { font-size: 0.55rem; }
+
+  /* Dashboard */
+  .dash-header { flex-direction: column; align-items: flex-start; gap: 1rem; }
+  .btn-group { width: 100%; }
+  .btn-group .btn { flex: 1; justify-content: center; }
+  .stat-strip, .stat-strip-2 { grid-template-columns: repeat(2,1fr); }
+  .dash-tabs { overflow-x: auto; -webkit-overflow-scrolling: touch; }
+  .dash-tab { white-space: nowrap; padding: 0.55rem 0.85rem; font-size: 0.72rem; }
+  .section-head { flex-wrap: wrap; }
+  .tbl-wrap { overflow-x: auto; -webkit-overflow-scrolling: touch; }
+  .preview-wrap { grid-template-columns: 1fr; }
+
+  /* Audit log */
   .audit-row, .audit-head { grid-template-columns: 1fr; }
   .audit-cell, .audit-hcell { border-right: none; border-bottom: 1px solid var(--border); }
   .audit-cell:last-child, .audit-hcell:last-child { border-bottom: none; }
-  .report-body { padding: 0.75rem; }
+
+  /* Report iframe */
+  .report-body { padding: 0.5rem; }
+  .report-topbar { padding: 0 1rem; gap: 0.5rem; }
+  .report-label { display: none; }
+
+  /* Footer */
+  .app-footer { flex-direction: column; align-items: flex-start; padding: 1rem; gap: 0.65rem; }
+
+  /* Auth card */
+  .auth-card { border-radius: var(--r2); }
+  .auth-card-head { padding: 1.5rem 1.25rem 1.25rem; }
+  .auth-card-body { padding: 1.25rem; }
+
+  /* Modal */
+  .modal-card { max-height: 90vh; border-radius: var(--r2); }
+  .modal-body { padding: 1rem; }
 }
 
 /* ── Footer ── */
