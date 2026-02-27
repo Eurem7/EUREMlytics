@@ -972,6 +972,78 @@ tr:hover td { background: var(--surface2); }
   .audit-cell:last-child, .audit-hcell:last-child { border-bottom: none; }
   .report-body { padding: 0.75rem; }
 }
+
+/* ── Footer ── */
+.app-footer {
+  border-top: 1px solid var(--border2);
+  padding: 1rem 2rem;
+  display: flex; align-items: center; justify-content: space-between;
+  flex-wrap: wrap; gap: 0.75rem;
+  background: var(--surface);
+}
+.footer-brand { font-family: var(--mono); font-size: 0.65rem; color: var(--text3); }
+.footer-brand strong { color: var(--text); }
+.footer-links { display: flex; gap: 1.25rem; }
+.footer-link {
+  font-size: 0.68rem; color: var(--text3); background: none;
+  border: none; cursor: pointer; font-family: var(--sans);
+  padding: 0; transition: color 0.15s;
+}
+.footer-link:hover { color: var(--accent); }
+
+/* ── Legal modal ── */
+.modal-overlay {
+  position: fixed; inset: 0;
+  background: rgba(0,0,0,0.4);
+  backdrop-filter: blur(4px);
+  z-index: 1000;
+  display: flex; align-items: center; justify-content: center;
+  padding: 1.5rem;
+  animation: fadeIn 0.2s ease;
+}
+.modal-card {
+  background: var(--surface);
+  border: 1px solid var(--border2);
+  border-radius: var(--r3);
+  box-shadow: 0 24px 64px rgba(0,0,0,0.18);
+  width: 100%; max-width: 640px;
+  max-height: 80vh;
+  display: flex; flex-direction: column;
+  animation: fadeUp 0.25s ease;
+}
+.modal-head {
+  padding: 1.25rem 1.5rem;
+  border-bottom: 1px solid var(--border2);
+  display: flex; align-items: center; justify-content: space-between;
+  flex-shrink: 0;
+}
+.modal-title { font-size: 0.9rem; font-weight: 700; letter-spacing: -0.02em; }
+.modal-close {
+  width: 28px; height: 28px; border-radius: 6px;
+  background: var(--bg2); border: 1px solid var(--border2);
+  cursor: pointer; font-size: 0.9rem; color: var(--text3);
+  display: flex; align-items: center; justify-content: center;
+  transition: all 0.15s;
+}
+.modal-close:hover { background: var(--bg); color: var(--text); }
+.modal-body {
+  padding: 1.5rem; overflow-y: auto; flex: 1;
+  font-size: 0.78rem; color: var(--text2); line-height: 1.7;
+}
+.modal-body h2 {
+  font-size: 0.72rem; font-weight: 700; text-transform: uppercase;
+  letter-spacing: 0.1em; color: var(--text3); margin: 1.5rem 0 0.6rem;
+}
+.modal-body h2:first-child { margin-top: 0; }
+.modal-body p { margin-bottom: 0.75rem; }
+.modal-body ul { padding-left: 1.25rem; margin-bottom: 0.75rem; }
+.modal-body ul li { margin-bottom: 0.35rem; }
+.modal-body a { color: var(--accent); text-decoration: none; }
+.modal-updated {
+  font-size: 0.65rem; color: var(--text3);
+  font-family: var(--mono); margin-top: 1.5rem;
+  padding-top: 1rem; border-top: 1px solid var(--border);
+}
 `
 
 // ─────────────────────────────────────────────────────────────
@@ -1648,6 +1720,118 @@ function ReportScreen({ sessionId, onBack }) {
 }
 
 // ─────────────────────────────────────────────────────────────
+// Legal content
+// ─────────────────────────────────────────────────────────────
+const PRIVACY_CONTENT = (
+  <>
+    <h2>Introduction</h2>
+    <p>Oxdemi.io ("we", "us", "our") is a data cleaning service operated in Nigeria. This Privacy Policy explains how we collect, use, and protect your information in accordance with the Nigeria Data Protection Regulation (NDPR) 2019.</p>
+    <h2>Data We Collect</h2>
+    <ul>
+      <li><strong>Account data:</strong> Your email address and authentication provider when you create an account.</li>
+      <li><strong>Payment data:</strong> Processed by Paystack. We do not store card numbers or sensitive payment details.</li>
+      <li><strong>Usage data:</strong> Number of files processed, row counts, and subscription status.</li>
+    </ul>
+    <h2>Data We Do NOT Collect</h2>
+    <p>Your uploaded CSV and Excel files are processed entirely in memory and are <strong>never stored, logged, or retained</strong>. Once your session ends (within 1 hour), all file data is permanently discarded.</p>
+    <h2>How We Use Your Data</h2>
+    <ul>
+      <li>To provide and improve the Oxdemi service</li>
+      <li>To manage your account and subscription</li>
+      <li>To send important service updates (no marketing without consent)</li>
+      <li>To enforce free tier row limits</li>
+    </ul>
+    <h2>Data Storage & Security</h2>
+    <p>Account data is stored securely on Supabase (hosted on AWS). We use HTTPS/TLS encryption for all data in transit. We do not sell your data to third parties.</p>
+    <h2>Third-Party Services</h2>
+    <ul>
+      <li><strong>Supabase</strong> — authentication and account storage</li>
+      <li><strong>Paystack</strong> — payment processing</li>
+      <li><strong>Render</strong> — backend server hosting</li>
+      <li><strong>Vercel</strong> — frontend hosting</li>
+    </ul>
+    <h2>Your Rights (NDPR)</h2>
+    <p>Under the NDPR, you have the right to access, correct, or delete your personal data. Contact us at <a href="mailto:hello@oxdemi.io">hello@oxdemi.io</a>.</p>
+    <h2>Cookies</h2>
+    <p>We use only essential session cookies required for authentication. We do not use advertising or tracking cookies.</p>
+    <h2>Contact</h2>
+    <p>For privacy enquiries: <a href="mailto:hello@oxdemi.io">hello@oxdemi.io</a></p>
+    <div className="modal-updated">Last updated: February 2026 · Governed by Nigerian law (NDPR 2019)</div>
+  </>
+)
+
+const TERMS_CONTENT = (
+  <>
+    <h2>Acceptance of Terms</h2>
+    <p>By using Oxdemi.io you agree to these Terms of Service. If you do not agree, please do not use the service.</p>
+    <h2>The Service</h2>
+    <p>Oxdemi provides an automated data cleaning service. You upload CSV or Excel files; our engine normalises, imputes, deduplicates, and scores your data, then returns a cleaned file and quality report.</p>
+    <h2>Free Tier</h2>
+    <p>Free accounts may process files up to <strong>500 rows</strong>. Files exceeding this limit require a paid subscription.</p>
+    <h2>Paid Tier</h2>
+    <p>Paid subscribers may process unlimited rows. Payments are processed by Paystack and billed as described on the pricing page. Subscriptions auto-renew unless cancelled.</p>
+    <h2>Your Data</h2>
+    <p>You retain full ownership of all data you upload. We process files in memory and do not store or use your data beyond providing the cleaning service. See our Privacy Policy for full details.</p>
+    <h2>Acceptable Use</h2>
+    <ul>
+      <li>Do not upload files containing illegal content</li>
+      <li>Do not attempt to reverse-engineer or abuse the service</li>
+      <li>Do not process data you do not have rights to</li>
+      <li>Do not resell or redistribute the service without permission</li>
+    </ul>
+    <h2>Limitation of Liability</h2>
+    <p>Oxdemi is provided "as is". We are not liable for data loss, inaccuracies in cleaned output, or business decisions made based on our reports. Always verify cleaned data before production use.</p>
+    <h2>Governing Law</h2>
+    <p>These terms are governed by the laws of the Federal Republic of Nigeria.</p>
+    <h2>Contact</h2>
+    <p>For any queries: <a href="mailto:hello@oxdemi.io">hello@oxdemi.io</a></p>
+    <div className="modal-updated">Last updated: February 2026 · Oxdemi.io, Nigeria</div>
+  </>
+)
+
+function LegalModal({ type, onClose }) {
+  useEffect(() => {
+    const handler = (e) => { if (e.key === 'Escape') onClose() }
+    window.addEventListener('keydown', handler)
+    return () => window.removeEventListener('keydown', handler)
+  }, [onClose])
+
+  return (
+    <div className="modal-overlay" onClick={onClose}>
+      <div className="modal-card" onClick={e => e.stopPropagation()}>
+        <div className="modal-head">
+          <span className="modal-title">
+            {type === 'privacy' ? 'Privacy Policy' : 'Terms of Service'}
+          </span>
+          <button className="modal-close" onClick={onClose}>✕</button>
+        </div>
+        <div className="modal-body">
+          {type === 'privacy' ? PRIVACY_CONTENT : TERMS_CONTENT}
+        </div>
+      </div>
+    </div>
+  )
+}
+
+// ─────────────────────────────────────────────────────────────
+// Footer
+// ─────────────────────────────────────────────────────────────
+function AppFooter({ onPrivacy, onTerms }) {
+  return (
+    <footer className="app-footer">
+      <span className="footer-brand">
+        <strong>Oxdemi.io</strong> · Raw in. Clean out. · © {new Date().getFullYear()}
+      </span>
+      <div className="footer-links">
+        <button className="footer-link" onClick={onPrivacy}>Privacy Policy</button>
+        <button className="footer-link" onClick={onTerms}>Terms of Service</button>
+        <a className="footer-link" href="mailto:hello@oxdemi.io">Contact</a>
+      </div>
+    </footer>
+  )
+}
+
+// ─────────────────────────────────────────────────────────────
 // Root
 // ─────────────────────────────────────────────────────────────
 const FREE_ROW_LIMIT = 500
@@ -1659,6 +1843,7 @@ export default function App() {
   const [user, setUser]             = useState(null)
   const [authReason, setAuthReason] = useState(null) // 'row_limit' | 'signin'
   const [authChecked, setAuthChecked] = useState(false)
+  const [legalModal, setLegalModal] = useState(null)
 
   // Listen for auth state changes
   useEffect(() => {
@@ -1717,7 +1902,12 @@ export default function App() {
         <AuthScreen
           onAuth={handleAuth}
           reason={authReason}
+          onPrivacy={() => setLegalModal('privacy')}
+          onTerms={() => setLegalModal('terms')}
         />
+        {legalModal && (
+          <LegalModal type={legalModal} onClose={() => setLegalModal(null)} />
+        )}
       ) : (
         <>
           <Topbar
@@ -1743,6 +1933,15 @@ export default function App() {
           )}
           {screen === 'report' && (
             <ReportScreen sessionId={uploadData.session_id} onBack={() => setScreen('dashboard')} />
+          )}
+
+          <AppFooter
+            onPrivacy={() => setLegalModal('privacy')}
+            onTerms={() => setLegalModal('terms')}
+          />
+
+          {legalModal && (
+            <LegalModal type={legalModal} onClose={() => setLegalModal(null)} />
           )}
         </>
       )}
