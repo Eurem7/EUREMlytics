@@ -1,24 +1,13 @@
 import { useState, useCallback, useRef, useEffect } from 'react'
 import { uploadFile, cleanData, csvDownloadUrl, pdfDownloadUrl, reportHtmlUrl } from './api/client.js'
 
-// Fetch blob and trigger download
-async function triggerDownload(url, filename) {
-  try {
-    const res = await fetch(url)
-    if (!res.ok) throw new Error('Server error: ' + res.status)
-    const blob = await res.blob()
-    const blobUrl = URL.createObjectURL(blob)
-    const a = document.createElement('a')
-    a.href = blobUrl
-    a.download = filename
-    document.body.appendChild(a)
-    a.click()
-    document.body.removeChild(a)
-    setTimeout(() => URL.revokeObjectURL(blobUrl), 1000)
-  } catch(e) {
-    // Fallback — open in new tab
-    window.open(url, '_blank')
-  }
+// Trigger download via hidden iframe — works cross-origin
+function triggerDownload(url) {
+  const iframe = document.createElement('iframe')
+  iframe.style.display = 'none'
+  iframe.src = url
+  document.body.appendChild(iframe)
+  setTimeout(() => document.body.removeChild(iframe), 5000)
 }
 import { supabase } from './lib/supabase.js'
 import AuthScreen from './AuthScreen.jsx'
@@ -1626,8 +1615,8 @@ function Dashboard({ result, sessionId, onViewReport }) {
           </div>
         </div>
         <div className="btn-group">
-          <button className="btn btn-ghost btn-sm" onClick={() => triggerDownload(csvDownloadUrl(sessionId), 'cleaned.csv')}>↓ CSV</button>
-          <button className="btn btn-ghost btn-sm" onClick={() => triggerDownload(pdfDownloadUrl(sessionId), 'oxdemi_report.pdf')}>↓ PDF</button>
+          <button className="btn btn-ghost btn-sm" onClick={() => triggerDownload(csvDownloadUrl(sessionId))}>↓ CSV</button>
+          <button className="btn btn-ghost btn-sm" onClick={() => triggerDownload(pdfDownloadUrl(sessionId))}>↓ PDF</button>
           <button className="btn btn-primary" onClick={onViewReport}>View Report →</button>
         </div>
       </div>
@@ -1871,8 +1860,8 @@ function ReportScreen({ sessionId, onBack }) {
         <button className="btn btn-ghost btn-sm" onClick={onBack}>← Dashboard</button>
         <span className="report-label">Full Quality Report</span>
         <div style={{marginLeft:'auto', display:'flex', gap:'0.5rem'}}>
-          <button className="btn btn-ghost btn-sm" onClick={() => triggerDownload(csvDownloadUrl(sessionId), 'cleaned.csv')}>↓ CSV</button>
-          <button className="btn btn-green-solid btn-sm" onClick={() => triggerDownload(pdfDownloadUrl(sessionId), 'oxdemi_report.pdf')}>↓ PDF</button>
+          <button className="btn btn-ghost btn-sm" onClick={() => triggerDownload(csvDownloadUrl(sessionId))}>↓ CSV</button>
+          <button className="btn btn-green-solid btn-sm" onClick={() => triggerDownload(pdfDownloadUrl(sessionId))}>↓ PDF</button>
         </div>
       </div>
       <div className="report-body">
