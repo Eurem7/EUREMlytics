@@ -1,20 +1,23 @@
 import { useState, useCallback, useRef, useEffect } from 'react'
 import { uploadFile, cleanData, csvDownloadUrl, pdfDownloadUrl, reportHtmlUrl } from './api/client.js'
 
-// Fetch-based download — works cross-origin unlike <a download>
+// Fetch blob and trigger download
 async function triggerDownload(url, filename) {
   try {
     const res = await fetch(url)
-    if (!res.ok) throw new Error('Download failed')
+    if (!res.ok) throw new Error('Server error: ' + res.status)
     const blob = await res.blob()
     const blobUrl = URL.createObjectURL(blob)
     const a = document.createElement('a')
-    a.href = blobUrl; a.download = filename
-    document.body.appendChild(a); a.click()
+    a.href = blobUrl
+    a.download = filename
+    document.body.appendChild(a)
+    a.click()
     document.body.removeChild(a)
-    URL.revokeObjectURL(blobUrl)
+    setTimeout(() => URL.revokeObjectURL(blobUrl), 1000)
   } catch(e) {
-    alert('Download failed: ' + e.message)
+    // Fallback — open in new tab
+    window.open(url, '_blank')
   }
 }
 import { supabase } from './lib/supabase.js'
