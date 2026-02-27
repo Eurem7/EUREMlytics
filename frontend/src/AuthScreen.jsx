@@ -204,7 +204,7 @@ const GitHubIcon = () => (
 // ─────────────────────────────────────────────────────────────
 // AuthScreen component
 // ─────────────────────────────────────────────────────────────
-export default function AuthScreen({ onAuth, reason }) {
+export default function AuthScreen({ onAuth, reason, onPrivacy, onTerms }) {
   const [mode, setMode]       = useState('signin')  // 'signin' | 'signup' | 'reset'
   const [email, setEmail]     = useState('')
   const [password, setPassword] = useState('')
@@ -390,7 +390,10 @@ export default function AuthScreen({ onAuth, reason }) {
 
             {mode === 'signup' && (
               <div className="auth-terms">
-                By creating an account you agree to our Terms of Service and Privacy Policy.
+                By creating an account you agree to our{' '}
+                <button style={{background:'none',border:'none',cursor:'pointer',color:'var(--accent)',fontSize:'0.65rem',fontFamily:'var(--sans)',padding:0}} onClick={onTerms}>Terms of Service</button>
+                {' '}and{' '}
+                <button style={{background:'none',border:'none',cursor:'pointer',color:'var(--accent)',fontSize:'0.65rem',fontFamily:'var(--sans)',padding:0}} onClick={onPrivacy}>Privacy Policy</button>.
                 Your data is processed in memory and never stored.
               </div>
             )}
