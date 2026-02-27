@@ -1,12 +1,13 @@
-
-
+"""
+main.py
+=======
+FastAPI application entry point.
 """
 
 from fastapi import FastAPI
 from fastapi.middleware.cors import CORSMiddleware
 
-from app.routers import upload, clean, report
-from app.routers import payments
+from app.routers import upload, clean, report, payments
 
 app = FastAPI(
     title="Oxdemi API",
@@ -45,4 +46,3 @@ def root():
         "clean":   "POST /clean/?session_id=<id>",
         "report":  "GET  /report/html?session_id=<id>",
     }
-
