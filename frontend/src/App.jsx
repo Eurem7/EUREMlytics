@@ -1906,10 +1906,17 @@ export default function App() {
         'https://euremlytics-2.onrender.com/payments/subscription',
         { headers: token ? { 'Authorization': `Bearer ${token}` } : {} }
       )
-      const data = await res.json()
-      setSubscription(data.status || 'free')
-    } catch(e) { setSubscription('free') }
-    finally { setSubChecked(true) }
+      if (res.ok) {
+        const data = await res.json()
+        setSubscription(data.status || 'free')
+      } else {
+        setSubscription('free')
+      }
+    } catch(e) {
+      setSubscription('free')
+    } finally {
+      setSubChecked(true)
+    }
   }
 
   // Verify payment when Paystack redirects back
