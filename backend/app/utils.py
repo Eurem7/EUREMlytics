@@ -30,6 +30,8 @@ PLACEHOLDER_VALUES: set[str] = {
     "nan", "nat",
     # Misc
     "not available", "not applicable", "tbd", "tba", "missing",
+    # Numeric placeholders
+    "inf", "infinity", "nan", "#value!", "n.a.", "n.a",
 }
 
 
@@ -191,9 +193,49 @@ def strip_control_chars(s: pd.Series) -> pd.Series:
 # Numeric sanitisation
 # ─────────────────────────────────────────────────────────────
 
+def _is_european_thousands(val: str) -> bool:
+    """
+    Detect European dot-thousands format: 2.278.845, 1.572.674
+    Pattern: digits separated by exactly 3 digits after each dot, multiple times.
+    """
+    return bool(re.match(r"^\d{1,3}(?:\.\d{3})+$", val.strip()))
+
+
+def _fix_european_thousands(val: str) -> str:
+    """Convert European dot-thousands 2.278.845 → 2278845"""
+    return val.replace(".", "")
+
+
+def _fix_score_corruption(val: str) -> str:
+    """
+    Fix common score/rating corruptions:
+      8,9f  → 8.9    (comma decimal + trailing char)
+      8:8   → 8.8    (colon as decimal)
+      8..8  → 8.8    (double dot)
+      8,7e-0 → 8.7   (comma decimal + scientific suffix)
+      ++8.7 → 8.7    (leading junk)
+      8.7.  → 8.7    (trailing dot)
+      9,.0  → 9.0    (comma+dot mixed)
+    """
+    s = val.strip()
+    # Strip leading non-digit/minus chars
+    s = re.sub(r"^[^\d\-]+", "", s)
+    # Replace colon used as decimal: 8:8 -> 8.8
+    s = re.sub(r"(\d):(\d)", r"\1.\2", s)
+    # Replace double dot: 8..8 -> 8.8
+    s = re.sub(r"(\d)\.\.(\d)", r"\1.\2", s)
+    # Replace comma decimal: 8,9 -> 8.9 (only if followed by 1-2 digits then end/non-digit)
+    s = re.sub(r"(\d),(\d{1,2})([^\d]|$)", r"\1.\2\3", s)
+    # Remove trailing non-numeric chars (8.7., 8,9f)
+    s = re.sub(r"[^\d\.]+$", "", s)
+    # Remove comma+dot combos: 9,.0 -> 9.0
+    s = re.sub(r",\.", ".", s)
+    return s
+
+
 def sanitize_numeric(series: pd.Series) -> pd.Series:
     """
-    Strip currency symbols, thousands commas, unit suffixes, and
+    Strip currency symbols, thousands separators, unit suffixes, and
     expand K/M/B multipliers, then extract the first valid numeric token.
 
     Returns a float64 Series with NaN where no number was found.
@@ -204,14 +246,12 @@ def sanitize_numeric(series: pd.Series) -> pd.Series:
       - Range strings      (2004 ~ 2021, 100 - 200)    → NaN
       - Month-name dates   (Jul 1, 2004, Aug 30, 2015) → NaN
 
-    Multiplier expansion (applied before unit stripping):
-      €103.5M → 103500000
-      €560K   → 560000
-      €1.2B   → 1200000000
-
-    Negative sign handling:
-      A leading minus is only treated as numeric when at the start of
-      the string or after whitespace — so "REF-1234" → NaN, not -1234.
+    Special handling:
+      - European dot thousands: 2.278.845  → 2278845
+      - European comma decimal: 8,9        → 8.9
+      - Score corruptions:      8:8, 8..8, ++8.7 → 8.8, 8.8, 8.7
+      - OCR letter-o:           4o8,035    → 408035
+      - Multipliers:            €103.5M    → 103500000
     """
     s = series.astype(str).str.strip()
 
@@ -220,27 +260,36 @@ def sanitize_numeric(series: pd.Series) -> pd.Series:
     is_date       = s.str.match(_DATE_PATTERN.pattern,       na=False)
     is_range      = s.str.match(_RANGE_PATTERN.pattern,      na=False)
     is_month_date = s.str.match(_MONTH_DATE_PATTERN.pattern, na=False, case=False)
-
     guard = is_id | is_date | is_range | is_month_date
 
     # ── Expand K / M / B multipliers ──
     s = _expand_multipliers(s)
 
-    # ── Strip currency symbols ──
-    s = s.str.replace(r"[₦\$€£¥₹₩₪฿]", "", regex=True)
+    # ── Strip currency symbols + leading whitespace after symbol ──
+    s = s.str.replace(r"[₦\$€£¥₹₩₪฿]\s*", "", regex=True)
+
+    # ── OCR fix: letter o/O used as zero in numeric context ──
+    # e.g. "4o8,035,783" → "408,035,783"
+    s = s.apply(lambda v: re.sub(r"(?<=\d)[oO](?=\d)", "0", v) if isinstance(v, str) else v)
+
+    # ── European dot thousands: 2.278.845 → 2278845 ──
+    # Must be done BEFORE general dot handling
+    s = s.apply(lambda v: _fix_european_thousands(v) if isinstance(v, str) and _is_european_thousands(v) else v)
 
     # ── Thousands commas: 1,234,567 → 1234567 ──
     s = s.str.replace(r",(?=\d{3})", "", regex=True)
 
+    # ── Score/rating corruption fixes ──
+    s = s.apply(lambda v: _fix_score_corruption(v) if isinstance(v, str) else v)
+
     # ── Common unit suffixes ──
     s = s.str.replace(r"\s*(sq\.?m\.?|sqm|cm|kg|lbs?|%|pcs?)\s*", "", regex=True)
 
-    # ── Star ratings: strip ★ and surrounding whitespace ──
+    # ── Star ratings ──
     s = s.str.replace(r"\s*★\s*", "", regex=True)
 
-    # ── Extract first numeric token ──
-    # Leading minus only valid at start-of-string or after whitespace
-    extracted = s.str.extract(r"(?:(?<=\s)|^)([-+]?\d*\.?\d+)", expand=False)
+    # ── Extract first valid numeric token ──
+    extracted = s.str.extract(r"(?:^|(?<=\s))([-]?\d+\.?\d*)", expand=False)
     result = pd.to_numeric(extracted, errors="coerce")
 
     # ── Null out guarded patterns ──
