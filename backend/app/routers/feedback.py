@@ -12,7 +12,7 @@ import httpx
 router = APIRouter(prefix="/feedback", tags=["feedback"])
 
 RESEND_API_KEY   = os.getenv("RESEND_API_KEY", "")
-FEEDBACK_TO      = "oluemmanuel488@gmail.com"  # your email
+FEEDBACK_TO      = "oluemmanuel388@gmail.com"  # your email
 FEEDBACK_FROM    = "Oxdemi Feedback <onboarding@resend.dev>"
 
 
