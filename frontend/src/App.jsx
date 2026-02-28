@@ -1063,6 +1063,59 @@ tr:hover td { background: var(--surface2); }
 }
 .feedback-success-icon { font-size: 2rem; margin-bottom: 0.5rem; }
 
+/* ── Post-clean feedback gate ── */
+.pf-overlay {
+  position: fixed; inset: 0; z-index: 700;
+  background: rgba(0,0,0,0.5); backdrop-filter: blur(6px);
+  display: flex; align-items: center; justify-content: center;
+  padding: 1.5rem; animation: fadeIn 0.25s ease;
+}
+.pf-card {
+  background: var(--surface); border: 1px solid var(--border2);
+  border-radius: var(--r3); box-shadow: 0 24px 64px rgba(0,0,0,0.2);
+  width: 100%; max-width: 420px;
+  animation: fadeUp 0.3s ease;
+}
+.pf-head {
+  padding: 1.5rem 1.5rem 1rem;
+  text-align: center;
+}
+.pf-icon { font-size: 2rem; margin-bottom: 0.75rem; }
+.pf-title { font-size: 1rem; font-weight: 700; letter-spacing: -0.02em; margin-bottom: 0.35rem; }
+.pf-sub { font-size: 0.75rem; color: var(--text3); line-height: 1.5; }
+.pf-body { padding: 0 1.5rem 1.5rem; }
+.pf-types {
+  display: flex; gap: 0.5rem; margin-bottom: 0.85rem; flex-wrap: wrap;
+}
+.pf-type {
+  font-size: 0.68rem; padding: 0.25rem 0.65rem; border-radius: 99px;
+  border: 1px solid var(--border2); background: var(--bg);
+  cursor: pointer; font-family: var(--sans); color: var(--text2);
+  transition: all 0.15s;
+}
+.pf-type:hover { border-color: var(--accent); color: var(--accent); }
+.pf-type.selected { background: var(--accent); color: #fff; border-color: var(--accent); }
+.pf-label { font-size: 0.7rem; font-weight: 600; color: var(--text2); margin-bottom: 0.5rem; display: block; }
+.pf-textarea {
+  width: 100%; min-height: 80px; border: 1px solid var(--border2);
+  border-radius: var(--r); padding: 0.65rem 0.75rem;
+  font-size: 0.78rem; font-family: var(--sans); color: var(--text);
+  background: var(--bg); resize: none; outline: none;
+  transition: border-color 0.15s; margin-bottom: 1rem;
+  box-sizing: border-box;
+}
+.pf-textarea:focus { border-color: var(--accent); background: var(--surface); }
+.pf-textarea::placeholder { color: var(--text3); }
+.pf-submit {
+  width: 100%; height: 40px; border-radius: var(--r);
+  background: var(--text); color: #fff; font-size: 0.82rem;
+  font-weight: 700; border: none; cursor: pointer; font-family: var(--sans);
+  transition: all 0.15s; letter-spacing: -0.01em;
+}
+.pf-submit:hover { background: #2a2a28; transform: translateY(-1px); }
+.pf-submit:disabled { background: var(--text3); cursor: not-allowed; transform: none; }
+.pf-note { font-size: 0.62rem; color: var(--text3); text-align: center; margin-top: 0.65rem; }
+
 @media (max-width: 680px) {
 
   /* Topbar — hide step track and email, keep logo + sign in/out */
@@ -1579,8 +1632,9 @@ function CleanScreen({ uploadData, onCleaned }) {
 // ─────────────────────────────────────────────────────────────
 // Dashboard
 // ─────────────────────────────────────────────────────────────
-function Dashboard({ result, sessionId, onViewReport }) {
+function Dashboard({ result, sessionId, onViewReport, user }) {
   const [tab, setTab] = useState('overview')
+  const [feedbackDone, setFeedbackDone] = useState(false)
 
   const quality    = result.column_quality_summary || []
   const audit      = result.audit_log || []
@@ -1601,6 +1655,9 @@ function Dashboard({ result, sessionId, onViewReport }) {
 
   return (
     <div className="page anim-fade-up">
+      {!feedbackDone && (
+        <PostCleanFeedback user={user} onDone={() => setFeedbackDone(true)} />
+      )}
       <div className="dash-header">
         <div className="dash-title-wrap">
           <div className="dash-eyebrow">
@@ -1615,8 +1672,8 @@ function Dashboard({ result, sessionId, onViewReport }) {
           </div>
         </div>
         <div className="btn-group">
-          <button className="btn btn-ghost btn-sm" onClick={() => triggerDownload(csvDownloadUrl(sessionId))}>↓ CSV</button>
-          <button className="btn btn-ghost btn-sm" onClick={() => triggerDownload(pdfDownloadUrl(sessionId))}>↓ PDF</button>
+          <button className="btn btn-ghost btn-sm" onClick={() => triggerDownload(csvDownloadUrl(sessionId))} disabled={!feedbackDone} title={!feedbackDone ? 'Share feedback to unlock downloads' : ''}>↓ CSV</button>
+          <button className="btn btn-ghost btn-sm" onClick={() => triggerDownload(pdfDownloadUrl(sessionId))} disabled={!feedbackDone} title={!feedbackDone ? 'Share feedback to unlock downloads' : ''}>↓ PDF</button>
           <button className="btn btn-primary" onClick={onViewReport}>View Report →</button>
         </div>
       </div>
@@ -1874,6 +1931,70 @@ function ReportScreen({ sessionId, onBack }) {
 }
 
 
+
+// ─────────────────────────────────────────────────────────────
+// Post-clean feedback gate
+// ─────────────────────────────────────────────────────────────
+function PostCleanFeedback({ user, onDone }) {
+  const [type, setType]       = useState('general')
+  const [text, setText]       = useState('')
+  const [sending, setSending] = useState(false)
+
+  const TYPES = [
+    { id: 'general',  label: '💬 General' },
+    { id: 'bug',      label: '🐛 Bug' },
+    { id: 'idea',     label: '💡 Idea' },
+    { id: 'praise',   label: '⭐ Praise' },
+  ]
+
+  const handleSubmit = async () => {
+    if (!text.trim()) return
+    setSending(true)
+    try {
+      await fetch('https://euremlytics-2.onrender.com/feedback/', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ type, message: text, email: user?.email || null })
+      })
+    } catch(e) { /* silent fail — don't block user */ }
+    finally { setSending(false); onDone() }
+  }
+
+  return (
+    <div className="pf-overlay">
+      <div className="pf-card">
+        <div className="pf-head">
+          <div className="pf-icon">✨</div>
+          <div className="pf-title">Your data is clean!</div>
+          <div className="pf-sub">Quick question before you download — what do you think of Oxdemi so far?</div>
+        </div>
+        <div className="pf-body">
+          <label className="pf-label">Type</label>
+          <div className="pf-types">
+            {TYPES.map(t => (
+              <button key={t.id} className={`pf-type${type===t.id?' selected':''}`} onClick={() => setType(t.id)}>
+                {t.label}
+              </button>
+            ))}
+          </div>
+          <label className="pf-label">Message <span style={{color:'var(--red)'}}>*</span></label>
+          <textarea
+            className="pf-textarea"
+            placeholder="Tell us what you think, what broke, or what you'd love to see…"
+            value={text}
+            onChange={e => setText(e.target.value)}
+            autoFocus
+          />
+          <button className="pf-submit" onClick={handleSubmit} disabled={sending || !text.trim()}>
+            {sending ? 'Sending…' : 'Submit & Download →'}
+          </button>
+          <div className="pf-note">Takes 10 seconds · Helps us improve Oxdemi</div>
+        </div>
+      </div>
+    </div>
+  )
+}
+
 // ─────────────────────────────────────────────────────────────
 // Feedback Widget
 // ─────────────────────────────────────────────────────────────
@@ -2087,7 +2208,7 @@ function AppFooter({ onPrivacy, onTerms }) {
 // ─────────────────────────────────────────────────────────────
 // Root
 // ─────────────────────────────────────────────────────────────
-const FREE_ROW_LIMIT = 500
+const FREE_ROW_LIMIT = 999999
 
 export default function App() {
   const [screen, setScreen]         = useState('upload')
@@ -2254,6 +2375,7 @@ export default function App() {
               result={result}
               sessionId={uploadData.session_id}
               onViewReport={() => setScreen('report')}
+              user={user}
             />
           )}
           {screen === 'report' && (
