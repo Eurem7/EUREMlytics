@@ -1777,9 +1777,8 @@ function CleanScreen({ uploadData, onCleaned }) {
 // ─────────────────────────────────────────────────────────────
 // Dashboard
 // ─────────────────────────────────────────────────────────────
-function Dashboard({ result, sessionId, onViewReport, user }) {
+function Dashboard({ result, sessionId, onViewReport, user, feedbackDone, onNeedFeedback }) {
   const [tab, setTab] = useState('overview')
-  const [feedbackDone, setFeedbackDone] = useState(false)
   const [showFeedback, setShowFeedback] = useState(false)
 
   const quality    = result.column_quality_summary || []
@@ -1801,9 +1800,7 @@ function Dashboard({ result, sessionId, onViewReport, user }) {
 
   return (
     <div className="page anim-fade-up">
-      {showFeedback && !feedbackDone && (
-        <PostCleanFeedback user={user} onDone={() => { setFeedbackDone(true); setShowFeedback(false) }} />
-      )}
+
       <div className="dash-header">
         <div className="dash-title-wrap">
           <div className="dash-eyebrow">
@@ -1818,8 +1815,8 @@ function Dashboard({ result, sessionId, onViewReport, user }) {
           </div>
         </div>
         <div className="btn-group">
-          <button className="btn btn-ghost btn-sm" onClick={() => feedbackDone ? triggerDownload(csvDownloadUrl(sessionId)) : setShowFeedback(true)}>↓ CSV</button>
-          <button className="btn btn-ghost btn-sm" onClick={() => feedbackDone ? triggerDownload(pdfDownloadUrl(sessionId)) : setShowFeedback(true)}>↓ PDF</button>
+          <button className="btn btn-ghost btn-sm" onClick={() => feedbackDone ? triggerDownload(csvDownloadUrl(sessionId)) : onNeedFeedback()}>↓ CSV</button>
+          <button className="btn btn-ghost btn-sm" onClick={() => feedbackDone ? triggerDownload(pdfDownloadUrl(sessionId)) : onNeedFeedback()}>↓ PDF</button>
           <button className="btn btn-primary" onClick={onViewReport}>View Report →</button>
         </div>
       </div>
@@ -2056,15 +2053,15 @@ function Dashboard({ result, sessionId, onViewReport, user }) {
 // ─────────────────────────────────────────────────────────────
 // Report
 // ─────────────────────────────────────────────────────────────
-function ReportScreen({ sessionId, onBack }) {
+function ReportScreen({ sessionId, onBack, user, feedbackDone, onNeedFeedback }) {
   return (
     <div style={{display:'flex', flexDirection:'column', height:'calc(100vh - 52px)'}}>
       <div className="report-topbar">
         <button className="btn btn-ghost btn-sm" onClick={onBack}>← Dashboard</button>
         <span className="report-label">Full Quality Report</span>
         <div style={{marginLeft:'auto', display:'flex', gap:'0.5rem'}}>
-          <button className="btn btn-ghost btn-sm" onClick={() => triggerDownload(csvDownloadUrl(sessionId))}>↓ CSV</button>
-          <button className="btn btn-green-solid btn-sm" onClick={() => triggerDownload(pdfDownloadUrl(sessionId))}>↓ PDF</button>
+          <button className="btn btn-ghost btn-sm" onClick={() => feedbackDone ? triggerDownload(csvDownloadUrl(sessionId)) : onNeedFeedback()}>↓ CSV</button>
+          <button className="btn btn-green-solid btn-sm" onClick={() => feedbackDone ? triggerDownload(pdfDownloadUrl(sessionId)) : onNeedFeedback()}>↓ PDF</button>
         </div>
       </div>
       <div className="report-body">
@@ -2512,6 +2509,8 @@ export default function App() {
   const [subscription, setSubscription] = useState('free')
   const [subChecked, setSubChecked]     = useState(false)
   const [prevScreen, setPrevScreen]     = useState('upload')
+  const [feedbackDone, setFeedbackDone]   = useState(false)
+  const [showFeedbackGate, setShowFeedbackGate] = useState(false)
 
   const fetchSubscription = async (token) => {
     try {
@@ -2667,10 +2666,12 @@ export default function App() {
               sessionId={uploadData.session_id}
               onViewReport={() => setScreen('report')}
               user={user}
+              feedbackDone={feedbackDone}
+              onNeedFeedback={() => setShowFeedbackGate(true)}
             />
           )}
           {screen === 'report' && (
-            <ReportScreen sessionId={uploadData.session_id} onBack={() => setScreen('dashboard')} />
+            <ReportScreen sessionId={uploadData.session_id} onBack={() => setScreen('dashboard')} user={user} feedbackDone={feedbackDone} onNeedFeedback={() => setShowFeedbackGate(true)} />
           )}
 
           <AppFooter
@@ -2685,6 +2686,10 @@ export default function App() {
 
           {showAbout && (
             <AboutModal onClose={() => setShowAbout(false)} />
+          )}
+
+          {showFeedbackGate && !feedbackDone && (
+            <PostCleanFeedback user={user} onDone={() => { setFeedbackDone(true); setShowFeedbackGate(false) }} />
           )}
 
           <FeedbackWidget user={user} />
