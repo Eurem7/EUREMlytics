@@ -1635,6 +1635,7 @@ function CleanScreen({ uploadData, onCleaned }) {
 function Dashboard({ result, sessionId, onViewReport, user }) {
   const [tab, setTab] = useState('overview')
   const [feedbackDone, setFeedbackDone] = useState(false)
+  const [showFeedback, setShowFeedback] = useState(false)
 
   const quality    = result.column_quality_summary || []
   const audit      = result.audit_log || []
@@ -1655,8 +1656,8 @@ function Dashboard({ result, sessionId, onViewReport, user }) {
 
   return (
     <div className="page anim-fade-up">
-      {!feedbackDone && (
-        <PostCleanFeedback user={user} onDone={() => setFeedbackDone(true)} />
+      {showFeedback && !feedbackDone && (
+        <PostCleanFeedback user={user} onDone={() => { setFeedbackDone(true); setShowFeedback(false) }} />
       )}
       <div className="dash-header">
         <div className="dash-title-wrap">
@@ -1672,8 +1673,8 @@ function Dashboard({ result, sessionId, onViewReport, user }) {
           </div>
         </div>
         <div className="btn-group">
-          <button className="btn btn-ghost btn-sm" onClick={() => triggerDownload(csvDownloadUrl(sessionId))} disabled={!feedbackDone} title={!feedbackDone ? 'Share feedback to unlock downloads' : ''}>↓ CSV</button>
-          <button className="btn btn-ghost btn-sm" onClick={() => triggerDownload(pdfDownloadUrl(sessionId))} disabled={!feedbackDone} title={!feedbackDone ? 'Share feedback to unlock downloads' : ''}>↓ PDF</button>
+          <button className="btn btn-ghost btn-sm" onClick={() => feedbackDone ? triggerDownload(csvDownloadUrl(sessionId)) : setShowFeedback(true)}>↓ CSV</button>
+          <button className="btn btn-ghost btn-sm" onClick={() => feedbackDone ? triggerDownload(pdfDownloadUrl(sessionId)) : setShowFeedback(true)}>↓ PDF</button>
           <button className="btn btn-primary" onClick={onViewReport}>View Report →</button>
         </div>
       </div>
