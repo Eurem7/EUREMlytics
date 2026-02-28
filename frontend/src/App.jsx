@@ -1175,6 +1175,26 @@ tr:hover td { background: var(--surface2); }
   /* Modal */
   .modal-card { max-height: 90vh; border-radius: var(--r2); }
   .modal-body { padding: 1rem; }
+
+  /* About modal — bottom sheet on mobile */
+  .about-overlay { padding: 0; align-items: flex-end; }
+  .about-card {
+    max-width: 100%; border-radius: var(--r3) var(--r3) 0 0;
+    max-height: 92vh; overflow-y: auto;
+  }
+  .about-hero { padding: 1.75rem 1.25rem 1.25rem; }
+  .about-hero-title { font-size: 1.35rem; }
+  .about-hero-sub { font-size: 0.74rem; }
+  .about-logo-mark { width: 40px; height: 30px; margin-bottom: 1rem; }
+  .about-section { padding: 1.1rem 1.25rem; }
+  .about-stages { grid-template-columns: repeat(2,1fr); gap: 0.5rem; }
+  .about-stage { padding: 0.65rem; }
+  .about-stat { padding: 0.75rem 0.5rem; }
+  .about-stat-val { font-size: 1.1rem; }
+  .about-principles { gap: 0.5rem; }
+  .about-principle-icon { width: 24px; height: 24px; font-size: 0.7rem; }
+  .about-footer-strip { padding: 0.85rem 1.25rem; flex-direction: column; align-items: flex-start; gap: 0.35rem; }
+  .about-close-btn { top: 1rem; right: 1rem; }
 }
 
 
