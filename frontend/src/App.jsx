@@ -1177,6 +1177,151 @@ tr:hover td { background: var(--surface2); }
   .modal-body { padding: 1rem; }
 }
 
+
+/* ── About Modal ── */
+.about-overlay {
+  position: fixed; inset: 0; z-index: 800;
+  background: rgba(0,0,0,0.5); backdrop-filter: blur(8px);
+  display: flex; align-items: center; justify-content: center;
+  padding: 1.5rem; animation: fadeIn 0.2s ease;
+  overflow-y: auto;
+}
+.about-card {
+  background: var(--surface); border: 1px solid var(--border2);
+  border-radius: var(--r3); box-shadow: 0 32px 80px rgba(0,0,0,0.25);
+  width: 100%; max-width: 680px;
+  animation: fadeUp 0.3s ease;
+  overflow: hidden;
+  my-margin: auto;
+}
+.about-hero {
+  background: var(--text);
+  padding: 2.5rem 2rem 2rem;
+  position: relative; overflow: hidden;
+}
+.about-hero-grid {
+  position: absolute; inset: 0; opacity: 0.04;
+  background-image: repeating-linear-gradient(0deg, #fff 0px, #fff 1px, transparent 1px, transparent 40px),
+    repeating-linear-gradient(90deg, #fff 0px, #fff 1px, transparent 1px, transparent 40px);
+}
+.about-logo-mark {
+  width: 48px; height: 36px; background: #fff; border-radius: 8px;
+  display: flex; align-items: center; justify-content: center;
+  font-family: var(--mono); font-size: 0.65rem; font-weight: 700;
+  color: var(--text); letter-spacing: 0.5px; margin-bottom: 1.25rem;
+}
+.about-hero-title {
+  font-size: 2rem; font-weight: 700; letter-spacing: -0.04em;
+  color: #fff; line-height: 1.1; margin-bottom: 0.5rem;
+}
+.about-hero-title em { font-style: normal; color: rgba(255,255,255,0.45); }
+.about-hero-sub {
+  font-size: 0.82rem; color: rgba(255,255,255,0.6);
+  line-height: 1.6; max-width: 480px;
+}
+.about-close-btn {
+  position: absolute; top: 1.25rem; right: 1.25rem;
+  width: 30px; height: 30px; border-radius: 6px;
+  background: rgba(255,255,255,0.1); border: 1px solid rgba(255,255,255,0.15);
+  cursor: pointer; font-size: 0.85rem; color: rgba(255,255,255,0.7);
+  display: flex; align-items: center; justify-content: center;
+  transition: all 0.15s;
+}
+.about-close-btn:hover { background: rgba(255,255,255,0.2); color: #fff; }
+
+.about-body { padding: 0; }
+
+.about-section {
+  padding: 1.75rem 2rem;
+  border-bottom: 1px solid var(--border);
+}
+.about-section:last-child { border-bottom: none; }
+.about-section-label {
+  font-size: 0.62rem; font-weight: 700; text-transform: uppercase;
+  letter-spacing: 0.12em; color: var(--accent); font-family: var(--mono);
+  margin-bottom: 0.85rem; display: flex; align-items: center; gap: 0.5rem;
+}
+.about-section-label::after {
+  content: ''; flex: 1; height: 1px; background: var(--border2);
+}
+.about-p {
+  font-size: 0.8rem; color: var(--text2); line-height: 1.75;
+  margin-bottom: 0.75rem;
+}
+.about-p:last-child { margin-bottom: 0; }
+.about-p strong { color: var(--text); font-weight: 600; }
+
+/* Pipeline stages */
+.about-stages {
+  display: grid; grid-template-columns: repeat(4, 1fr); gap: 0.75rem;
+  margin-top: 0.5rem;
+}
+@media (max-width: 680px) { .about-stages { grid-template-columns: repeat(2,1fr); } }
+.about-stage {
+  background: var(--bg); border: 1px solid var(--border2);
+  border-radius: var(--r); padding: 0.85rem;
+}
+.about-stage-num {
+  font-family: var(--mono); font-size: 0.58rem; color: var(--accent);
+  font-weight: 700; margin-bottom: 0.4rem;
+}
+.about-stage-name {
+  font-size: 0.72rem; font-weight: 700; color: var(--text);
+  margin-bottom: 0.25rem; letter-spacing: -0.01em;
+}
+.about-stage-desc {
+  font-size: 0.65rem; color: var(--text3); line-height: 1.5;
+}
+
+/* Principles */
+.about-principles { display: flex; flex-direction: column; gap: 0.65rem; margin-top: 0.25rem; }
+.about-principle {
+  display: flex; gap: 0.85rem; align-items: flex-start;
+}
+.about-principle-icon {
+  width: 28px; height: 28px; border-radius: 6px;
+  background: var(--bg2); border: 1px solid var(--border2);
+  display: flex; align-items: center; justify-content: center;
+  font-size: 0.8rem; flex-shrink: 0; margin-top: 0.1rem;
+}
+.about-principle-text { font-size: 0.78rem; color: var(--text2); line-height: 1.6; }
+.about-principle-text strong { color: var(--text); display: block; margin-bottom: 0.1rem; }
+
+/* Stats strip */
+.about-stats {
+  display: grid; grid-template-columns: repeat(3,1fr);
+  border-top: 1px solid var(--border); border-left: 1px solid var(--border);
+  margin-top: 0.75rem; border-radius: var(--r); overflow: hidden;
+}
+.about-stat {
+  padding: 1rem; text-align: center;
+  border-right: 1px solid var(--border); border-bottom: 1px solid var(--border);
+}
+.about-stat-val {
+  font-family: var(--mono); font-size: 1.4rem; font-weight: 700;
+  color: var(--text); letter-spacing: -0.03em;
+}
+.about-stat-lbl { font-size: 0.62rem; color: var(--text3); margin-top: 0.2rem; }
+
+/* Footer strip */
+.about-footer-strip {
+  padding: 1rem 2rem;
+  background: var(--bg);
+  border-top: 1px solid var(--border2);
+  display: flex; align-items: center; justify-content: space-between;
+  flex-wrap: wrap; gap: 0.5rem;
+}
+.about-footer-tag {
+  font-family: var(--mono); font-size: 0.62rem; color: var(--text3);
+}
+.about-footer-tag strong { color: var(--text); }
+.about-contact-link {
+  font-size: 0.72rem; color: var(--accent);
+  text-decoration: none; font-weight: 500;
+  transition: opacity 0.15s;
+}
+.about-contact-link:hover { opacity: 0.7; }
+
 /* ── Footer ── */
 .app-footer {
   border-top: 1px solid var(--border2);
@@ -2094,6 +2239,149 @@ function FeedbackWidget({ user }) {
   )
 }
 
+
+// ─────────────────────────────────────────────────────────────
+// About Modal
+// ─────────────────────────────────────────────────────────────
+function AboutModal({ onClose }) {
+  useEffect(() => {
+    const handler = (e) => { if (e.key === 'Escape') onClose() }
+    window.addEventListener('keydown', handler)
+    return () => window.removeEventListener('keydown', handler)
+  }, [onClose])
+
+  const STAGES = [
+    { num: '01', name: 'Type Inference',    desc: 'Detects numeric, date, boolean, and text types across every column' },
+    { num: '02', name: 'Normalisation',     desc: 'Standardises formats, strips whitespace, fixes casing and encoding' },
+    { num: '03', name: 'Unit Expansion',    desc: 'Expands K/M/B shorthand in currency and numeric fields' },
+    { num: '04', name: 'Missing Values',    desc: 'Imputes or drops based on configurable thresholds and strategies' },
+    { num: '05', name: 'Deduplication',     desc: 'Detects and removes exact and near-duplicate rows' },
+    { num: '06', name: 'Outlier Handling',  desc: 'IQR and Z-score methods — flag, cap, or remove outliers' },
+    { num: '07', name: 'Quality Scoring',   desc: 'Scores every column 0–1 across completeness, consistency, validity' },
+    { num: '08', name: 'Audit Trail',       desc: 'Every action logged with before/after counts and reasoning' },
+  ]
+
+  const PRINCIPLES = [
+    { icon: '🔒', title: 'Your data stays yours',       desc: 'Files are processed entirely in memory. Nothing is stored, logged, or retained after your session ends. We have no access to your data.' },
+    { icon: '⚡', title: 'Speed over ceremony',         desc: 'No configuration required. Upload a file and get a clean dataset in seconds. Experts can tune the pipeline; beginners get great results out of the box.' },
+    { icon: '📋', title: 'Full transparency',           desc: 'Every change Oxdemi makes is recorded in a human-readable audit trail. You always know exactly what was changed and why.' },
+    { icon: '🇳🇬', title: 'Built for African business data', desc: 'Naira formatting, K/M/B currency shorthand, Nigerian date formats, and mixed-language datasets are all handled natively.' },
+  ]
+
+  return (
+    <div className="about-overlay" onClick={onClose}>
+      <div className="about-card" onClick={e => e.stopPropagation()}>
+
+        {/* Hero */}
+        <div className="about-hero">
+          <div className="about-hero-grid" />
+          <button className="about-close-btn" onClick={onClose}>✕</button>
+          <div className="about-logo-mark">OXD</div>
+          <div className="about-hero-title">
+            Make Your Business Data<br/><em>Reliable in Minutes.</em>
+          </div>
+          <div className="about-hero-sub">
+            Oxdemi is an automated data cleaning engine for businesses and analysts who need to trust their data — without spending hours fixing spreadsheets by hand.
+          </div>
+        </div>
+
+        <div className="about-body">
+
+          {/* What is Oxdemi */}
+          <div className="about-section">
+            <div className="about-section-label">What is Oxdemi</div>
+            <p className="about-p">
+              Most business data is messy. Spreadsheets exported from accounting software, CRMs, and field surveys arrive with <strong>inconsistent formatting</strong>, <strong>missing values</strong>, <strong>duplicate rows</strong>, and <strong>hidden errors</strong> that quietly corrupt reports and dashboards.
+            </p>
+            <p className="about-p">
+              Oxdemi is a <strong>one-click data cleaning engine</strong>. Upload your CSV or Excel file and our 8-stage pipeline automatically detects issues, fixes what can be fixed, flags what needs attention, and delivers a clean dataset with a full quality report — in seconds.
+            </p>
+            <p className="about-p">
+              No code. No manual work. No data science degree required.
+            </p>
+
+            <div className="about-stats">
+              {[
+                { val: '8', lbl: 'Pipeline stages' },
+                { val: '0', lbl: 'Lines of code needed' },
+                { val: '∞', lbl: 'File types supported' },
+              ].map(s => (
+                <div className="about-stat" key={s.lbl}>
+                  <div className="about-stat-val">{s.val}</div>
+                  <div className="about-stat-lbl">{s.lbl}</div>
+                </div>
+              ))}
+            </div>
+          </div>
+
+          {/* The Pipeline */}
+          <div className="about-section">
+            <div className="about-section-label">The 8-Stage Pipeline</div>
+            <p className="about-p">Every file runs through all 8 stages automatically. You can tune each stage in the Config panel before running.</p>
+            <div className="about-stages">
+              {STAGES.map(s => (
+                <div className="about-stage" key={s.num}>
+                  <div className="about-stage-num">{s.num}</div>
+                  <div className="about-stage-name">{s.name}</div>
+                  <div className="about-stage-desc">{s.desc}</div>
+                </div>
+              ))}
+            </div>
+          </div>
+
+          {/* Who it's for */}
+          <div className="about-section">
+            <div className="about-section-label">Who It's For</div>
+            <p className="about-p">
+              <strong>Finance teams</strong> tired of manually cleaning exports from QuickBooks, Sage, or bank statements before building reports. <strong>Operations managers</strong> dealing with messy inventory or logistics data. <strong>Marketers</strong> working with CRM exports full of duplicates and formatting inconsistencies. <strong>Consultants and analysts</strong> who receive client data in unpredictable shapes.
+            </p>
+            <p className="about-p">
+              If you work with spreadsheets and you've ever spent more than 20 minutes cleaning a file — Oxdemi is for you.
+            </p>
+          </div>
+
+          {/* Principles */}
+          <div className="about-section">
+            <div className="about-section-label">Our Principles</div>
+            <div className="about-principles">
+              {PRINCIPLES.map(p => (
+                <div className="about-principle" key={p.title}>
+                  <div className="about-principle-icon">{p.icon}</div>
+                  <div className="about-principle-text">
+                    <strong>{p.title}</strong>
+                    {p.desc}
+                  </div>
+                </div>
+              ))}
+            </div>
+          </div>
+
+          {/* What's next */}
+          <div className="about-section">
+            <div className="about-section-label">What's Coming</div>
+            <p className="about-p">
+              Oxdemi is actively being developed. On the roadmap: <strong>direct Google Sheets integration</strong>, <strong>scheduled cleaning jobs</strong>, <strong>team workspaces</strong>, <strong>API access</strong> for developers who want to embed cleaning into their own pipelines, and <strong>custom rule sets</strong> for domain-specific cleaning logic.
+            </p>
+            <p className="about-p">
+              Have a feature request or a dataset that broke? Hit the feedback button — we read every message.
+            </p>
+          </div>
+
+        </div>
+
+        {/* Footer strip */}
+        <div className="about-footer-strip">
+          <span className="about-footer-tag">
+            <strong>Oxdemi.io</strong> · Built in Nigeria 🇳🇬 · Raw in. Clean out.
+          </span>
+          <a className="about-contact-link" href="mailto:hello@oxdemi.io">hello@oxdemi.io</a>
+        </div>
+
+      </div>
+    </div>
+  )
+}
+
 // ─────────────────────────────────────────────────────────────
 // Legal content
 // ─────────────────────────────────────────────────────────────
@@ -2191,13 +2479,14 @@ function LegalModal({ type, onClose }) {
 // ─────────────────────────────────────────────────────────────
 // Footer
 // ─────────────────────────────────────────────────────────────
-function AppFooter({ onPrivacy, onTerms }) {
+function AppFooter({ onPrivacy, onTerms, onAbout }) {
   return (
     <footer className="app-footer">
       <span className="footer-brand">
         <strong>Oxdemi.io</strong> · Raw in. Clean out. · © {new Date().getFullYear()}
       </span>
       <div className="footer-links">
+        <button className="footer-link" onClick={onAbout}>About</button>
         <button className="footer-link" onClick={onPrivacy}>Privacy Policy</button>
         <button className="footer-link" onClick={onTerms}>Terms of Service</button>
         <a className="footer-link" href="mailto:hello@oxdemi.io">Contact</a>
@@ -2219,6 +2508,7 @@ export default function App() {
   const [authReason, setAuthReason] = useState(null)
   const [authChecked, setAuthChecked]   = useState(false)
   const [legalModal, setLegalModal]     = useState(null)
+  const [showAbout, setShowAbout]         = useState(false)
   const [subscription, setSubscription] = useState('free')
   const [subChecked, setSubChecked]     = useState(false)
   const [prevScreen, setPrevScreen]     = useState('upload')
@@ -2386,10 +2676,15 @@ export default function App() {
           <AppFooter
             onPrivacy={() => setLegalModal('privacy')}
             onTerms={() => setLegalModal('terms')}
+            onAbout={() => setShowAbout(true)}
           />
 
           {legalModal && (
             <LegalModal type={legalModal} onClose={() => setLegalModal(null)} />
+          )}
+
+          {showAbout && (
+            <AboutModal onClose={() => setShowAbout(false)} />
           )}
 
           <FeedbackWidget user={user} />
