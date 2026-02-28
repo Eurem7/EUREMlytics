@@ -1342,6 +1342,45 @@ tr:hover td { background: var(--surface2); }
 }
 .about-contact-link:hover { opacity: 0.7; }
 
+
+/* ── Upload source tabs ── */
+.upload-source-tabs {
+  display: flex; gap: 0; margin-bottom: 1rem;
+  border: 1px solid var(--border2); border-radius: var(--r); overflow: hidden;
+}
+.upload-source-tab {
+  flex: 1; padding: 0.55rem 0.75rem; font-size: 0.72rem; font-weight: 600;
+  background: var(--bg); border: none; cursor: pointer; font-family: var(--sans);
+  color: var(--text3); transition: all 0.15s; display: flex; align-items: center;
+  justify-content: center; gap: 0.4rem;
+}
+.upload-source-tab:first-child { border-right: 1px solid var(--border2); }
+.upload-source-tab.active { background: var(--surface); color: var(--text); }
+.upload-source-tab:hover:not(.active) { background: var(--bg2); color: var(--text2); }
+
+/* Sheets input */
+.sheets-input-wrap {
+  display: flex; flex-direction: column; gap: 0.75rem; padding: 1rem 0 0.25rem;
+}
+.sheets-input-label {
+  font-size: 0.7rem; font-weight: 600; color: var(--text2);
+}
+.sheets-input {
+  width: 100%; height: 40px; border: 1px solid var(--border2);
+  border-radius: var(--r); padding: 0 0.85rem;
+  font-size: 0.78rem; font-family: var(--mono); color: var(--text);
+  background: var(--bg); outline: none; transition: border-color 0.15s;
+  box-sizing: border-box;
+}
+.sheets-input:focus { border-color: var(--accent); background: var(--surface); }
+.sheets-input::placeholder { color: var(--text3); font-family: var(--sans); }
+.sheets-hint {
+  font-size: 0.65rem; color: var(--text3); line-height: 1.5;
+  padding: 0.6rem 0.75rem; background: var(--bg2);
+  border: 1px solid var(--border); border-radius: var(--r);
+  display: flex; gap: 0.5rem; align-items: flex-start;
+}
+
 /* ── Footer ── */
 .app-footer {
   border-top: 1px solid var(--border2);
@@ -1477,11 +1516,15 @@ function Topbar({ step, sessionId, user, onSignIn, onSignOut, onAccount }) {
 // ─────────────────────────────────────────────────────────────
 // Upload
 // ─────────────────────────────────────────────────────────────
+const API_BASE = import.meta.env.VITE_API_URL || 'https://euremlytics-2.onrender.com'
+
 function UploadScreen({ onUploaded }) {
+  const [source, setSource]   = useState('file') // 'file' | 'sheets'
   const [file, setFile]       = useState(null)
   const [drag, setDrag]       = useState(false)
   const [loading, setLoading] = useState(false)
   const [error, setError]     = useState('')
+  const [sheetsUrl, setSheetsUrl] = useState('')
   const inputRef = useRef()
 
   const pick = f => {
@@ -1495,11 +1538,27 @@ function UploadScreen({ onUploaded }) {
     e.preventDefault(); setDrag(false); pick(e.dataTransfer.files[0])
   }, [])
 
-  const submit = async () => {
+  const submitFile = async () => {
     if (!file) return
     setLoading(true); setError('')
     try { onUploaded(await uploadFile(file)) }
     catch(e) { setError(e.message) }
+    finally { setLoading(false) }
+  }
+
+  const submitSheets = async () => {
+    if (!sheetsUrl.trim()) return
+    setLoading(true); setError('')
+    try {
+      const res = await fetch(`${API_BASE}/upload/sheets`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ url: sheetsUrl.trim() })
+      })
+      const data = await res.json()
+      if (!res.ok) throw new Error(data.detail || 'Failed to import sheet')
+      onUploaded(data)
+    } catch(e) { setError(e.message) }
     finally { setLoading(false) }
   }
 
@@ -1533,38 +1592,89 @@ function UploadScreen({ onUploaded }) {
 
         {/* Right — upload card */}
         <div className="upload-card" style={{animationDelay:'0.1s'}}>
-          <div
-            className={`dropzone${drag?' drag':''}`}
-            onDragOver={e => { e.preventDefault(); setDrag(true) }}
-            onDragLeave={() => setDrag(false)}
-            onDrop={onDrop}
-            onClick={() => inputRef.current?.click()}
-          >
-            <input ref={inputRef} type="file" accept=".csv,.xlsx,.xls" onChange={e => { pick(e.target.files[0]); e.target.value = '' }} />
-            <div className="dz-icon">
-              {file ? '📄' : '📂'}
-            </div>
-            <div className="dz-title">{file ? file.name : 'Drop your file here'}</div>
-            <div className="dz-sub">{file ? fmtBytes(file.size) : 'CSV, XLSX, XLS · max 50 MB'}</div>
-          </div>
 
-          {file && (
-            <div className="file-chip">
-              <span className="file-chip-icon">✓</span>
-              <span className="file-chip-name">{file.name}</span>
-              <span className="file-chip-size">{fmtBytes(file.size)}</span>
-              <button className="file-chip-remove" onClick={() => { setFile(null); if (inputRef.current) inputRef.current.value = '' }}>✕</button>
-            </div>
-          )}
-
-          {error && <div className="error-box"><span>⚠</span><span>{error}</span></div>}
-
-          <div className="upload-actions">
-            {!file && <span className="upload-hint">No file selected</span>}
-            <button className="btn btn-primary btn-lg" onClick={submit} disabled={!file || loading}>
-              {loading ? 'Uploading…' : 'Upload & Continue →'}
+          {/* Source tabs */}
+          <div className="upload-source-tabs">
+            <button
+              className={`upload-source-tab${source==='file'?' active':''}`}
+              onClick={() => { setSource('file'); setError('') }}
+            >
+              📂 Upload File
+            </button>
+            <button
+              className={`upload-source-tab${source==='sheets'?' active':''}`}
+              onClick={() => { setSource('sheets'); setError('') }}
+            >
+              <svg width="13" height="13" viewBox="0 0 24 24" fill="none" style={{flexShrink:0}}>
+                <rect x="3" y="3" width="18" height="18" rx="2" fill="#0F9D58"/>
+                <path d="M7 8h10M7 12h10M7 16h6" stroke="#fff" strokeWidth="1.5" strokeLinecap="round"/>
+              </svg>
+              Google Sheets
             </button>
           </div>
+
+          {source === 'file' ? (
+            <>
+              <div
+                className={`dropzone${drag?' drag':''}`}
+                onDragOver={e => { e.preventDefault(); setDrag(true) }}
+                onDragLeave={() => setDrag(false)}
+                onDrop={onDrop}
+                onClick={() => inputRef.current?.click()}
+              >
+                <input ref={inputRef} type="file" accept=".csv,.xlsx,.xls" onChange={e => { pick(e.target.files[0]); e.target.value = '' }} />
+                <div className="dz-icon">{file ? '📄' : '📂'}</div>
+                <div className="dz-title">{file ? file.name : 'Drop your file here'}</div>
+                <div className="dz-sub">{file ? fmtBytes(file.size) : 'CSV, XLSX, XLS · max 50 MB'}</div>
+              </div>
+
+              {file && (
+                <div className="file-chip">
+                  <span className="file-chip-icon">✓</span>
+                  <span className="file-chip-name">{file.name}</span>
+                  <span className="file-chip-size">{fmtBytes(file.size)}</span>
+                  <button className="file-chip-remove" onClick={() => { setFile(null); if (inputRef.current) inputRef.current.value = '' }}>✕</button>
+                </div>
+              )}
+
+              {error && <div className="error-box"><span>⚠</span><span>{error}</span></div>}
+
+              <div className="upload-actions">
+                {!file && <span className="upload-hint">No file selected</span>}
+                <button className="btn btn-primary btn-lg" onClick={submitFile} disabled={!file || loading}>
+                  {loading ? 'Uploading…' : 'Upload & Continue →'}
+                </button>
+              </div>
+            </>
+          ) : (
+            <>
+              <div className="sheets-input-wrap">
+                <label className="sheets-input-label">Google Sheets URL</label>
+                <input
+                  className="sheets-input"
+                  type="url"
+                  placeholder="https://docs.google.com/spreadsheets/d/..."
+                  value={sheetsUrl}
+                  onChange={e => { setSheetsUrl(e.target.value); setError('') }}
+                  onKeyDown={e => e.key === 'Enter' && submitSheets()}
+                  autoFocus
+                />
+                <div className="sheets-hint">
+                  <span>ℹ</span>
+                  <span>The sheet must be set to <strong>Anyone with the link can view</strong>. In Google Sheets: Share → Change → Anyone with the link.</span>
+                </div>
+              </div>
+
+              {error && <div className="error-box"><span>⚠</span><span>{error}</span></div>}
+
+              <div className="upload-actions">
+                {!sheetsUrl.trim() && <span className="upload-hint">Paste a sheet URL above</span>}
+                <button className="btn btn-primary btn-lg" onClick={submitSheets} disabled={!sheetsUrl.trim() || loading}>
+                  {loading ? 'Importing sheet…' : 'Import & Continue →'}
+                </button>
+              </div>
+            </>
+          )}
         </div>
       </div>
     </div>
