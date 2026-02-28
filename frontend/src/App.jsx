@@ -1292,10 +1292,10 @@ function UploadScreen({ onUploaded }) {
         <div className="upload-hero-text anim-fade-up">
           <div className="upload-eyebrow">Data Cleaning Engine</div>
           <h1 className="upload-h1">
-            Raw in.<br/><em>Clean out.</em>
+            Make Your Business Data<br/><em>Reliable in Minutes.</em>
           </h1>
           <p className="upload-sub">
-            Upload any CSV or Excel file. Oxdemi normalises, imputes, deduplicates, and scores every column — instantly.
+            Oxdemi automatically cleans, validates, scores, and audits your datasets — so you can trust your reports again.
           </p>
           <div className="upload-features">
             {[
