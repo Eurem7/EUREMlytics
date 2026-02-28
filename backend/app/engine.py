@@ -109,8 +109,23 @@ class EnterpriseDataEngine:
         """
         Lowercase, strip, collapse whitespace, replace spaces/hyphens
         with underscores, strip leading digits, remove special chars.
+        Also drops fully-unnamed or completely-empty columns.
         E.g. "  Sale Price (£) " -> "sale_price"
         """
+        # ── Drop columns that are entirely empty or purely unnamed ──
+        empty_cols = [
+            col for col in self.df.columns
+            if self.df[col].isna().all() or
+               (str(col).lower().startswith("unnamed") and self.df[col].isna().all())
+        ]
+        if empty_cols:
+            self.df.drop(columns=empty_cols, inplace=True)
+            self._log(
+                action="empty_column_drop",
+                columns_dropped=empty_cols,
+                count=len(empty_cols),
+            )
+
         rename_map = {}
         for col in self.df.columns:
             clean = str(col)
