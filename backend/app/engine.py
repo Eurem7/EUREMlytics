@@ -3,15 +3,7 @@ EnterpriseDataEngine
 ====================
 Production-grade data cleaning pipeline.
 
-Pipeline order (intentional):
-  1. Column header normalisation
-  2. String normalisation  (object cols only)
-  3. Unit stripping        (removes "sq.m.", "kg", "%" etc.)
-  4. Category harmonisation (abbreviation/variant mapping)
-  5. Duplicate removal
-  6. Per-column type inference → imputation → outlier handling
-  7. Constant & near-constant column flagging
-  8. EDA report generation
+
 
 Design principles:
   - Every mutation is logged with before/after counts where meaningful
@@ -906,3 +898,4 @@ class EnterpriseDataEngine:
             "column_quality_summary": self.column_quality,
             "eda_report":             eda,
         }
+
