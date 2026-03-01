@@ -2695,7 +2695,7 @@ function LandingPage({ onSignUp, onSignIn, onAbout, onPrivacy, onTerms }) {
       {/* Nav */}
       <nav className="land-nav">
         <div className="land-nav-logo">
-          <span>OXD</span>
+          <span>Oxdemi</span>
           <span className="land-nav-badge">BETA</span>
         </div>
         <div className="land-nav-spacer" />
