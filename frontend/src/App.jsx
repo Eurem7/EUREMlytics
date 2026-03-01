@@ -449,6 +449,20 @@ body {
   color: var(--red);
   animation: fadeIn 0.2s ease;
 }
+.success-box {
+  display: flex; gap: 0.6rem; align-items: flex-start;
+  background: rgba(39,174,96,0.06); border: 1px solid rgba(39,174,96,0.2);
+  border-radius: var(--r); padding: 0.75rem 1rem;
+  font-size: 0.75rem; color: var(--green); line-height: 1.5;
+  margin-top: 1rem; animation: fadeIn 0.2s ease;
+}
+.info-box {
+  display: flex; gap: 0.6rem; align-items: flex-start;
+  background: rgba(26,107,255,0.05); border: 1px solid rgba(26,107,255,0.15);
+  border-radius: var(--r); padding: 0.75rem 1rem;
+  font-size: 0.75rem; color: var(--accent); line-height: 1.5;
+  margin-top: 1rem; animation: fadeIn 0.2s ease;
+}
 
 /* ── CLEAN SCREEN ── */
 .clean-layout {
@@ -1198,6 +1212,288 @@ tr:hover td { background: var(--surface2); }
 }
 
 
+
+
+   ══════════════════════════════════════════════════════════════ */
+
+.land {
+  min-height: 100vh;
+  background: var(--bg);
+  display: flex; flex-direction: column;
+}
+
+/* Nav */
+.land-nav {
+  position: sticky; top: 0; z-index: 100;
+  height: 56px; display: flex; align-items: center;
+  padding: 0 2rem; gap: 1.5rem;
+  background: rgba(250,250,248,0.85); backdrop-filter: blur(12px);
+  border-bottom: 1px solid var(--border);
+}
+.land-nav-logo {
+  font-family: var(--mono); font-size: 0.72rem; font-weight: 700;
+  letter-spacing: 0.05em; color: var(--text);
+  display: flex; align-items: center; gap: 0.5rem;
+}
+.land-nav-badge {
+  font-size: 0.55rem; font-weight: 700; padding: 0.15rem 0.45rem;
+  background: var(--text); color: #fff; border-radius: 99px;
+  letter-spacing: 0.08em;
+}
+.land-nav-spacer { flex: 1; }
+.land-nav-link {
+  font-size: 0.75rem; color: var(--text3); background: none; border: none;
+  cursor: pointer; font-family: var(--sans); transition: color 0.15s; padding: 0;
+}
+.land-nav-link:hover { color: var(--text); }
+.land-nav-cta {
+  height: 32px; padding: 0 1rem; border-radius: var(--r);
+  background: var(--text); color: #fff; font-size: 0.75rem;
+  font-weight: 600; border: none; cursor: pointer; font-family: var(--sans);
+  transition: all 0.15s;
+}
+.land-nav-cta:hover { background: #2a2a28; transform: translateY(-1px); }
+
+/* Hero */
+.land-hero {
+  flex: 1; display: flex; flex-direction: column;
+  align-items: center; justify-content: center;
+  text-align: center; padding: 5rem 1.5rem 3rem;
+  position: relative; overflow: hidden;
+}
+.land-hero-bg {
+  position: absolute; inset: 0; pointer-events: none;
+  background:
+    radial-gradient(ellipse 80% 60% at 50% -10%, rgba(26,107,255,0.06) 0%, transparent 70%),
+    repeating-linear-gradient(0deg, transparent, transparent 39px, var(--border) 39px, var(--border) 40px),
+    repeating-linear-gradient(90deg, transparent, transparent 39px, var(--border) 39px, var(--border) 40px);
+  opacity: 0.5;
+}
+.land-eyebrow {
+  display: inline-flex; align-items: center; gap: 0.5rem;
+  font-family: var(--mono); font-size: 0.62rem; font-weight: 700;
+  letter-spacing: 0.12em; text-transform: uppercase; color: var(--accent);
+  border: 1px solid rgba(26,107,255,0.2); border-radius: 99px;
+  padding: 0.3rem 0.85rem; background: rgba(26,107,255,0.04);
+  margin-bottom: 1.5rem; position: relative;
+}
+.land-eyebrow-dot {
+  width: 6px; height: 6px; border-radius: 50%;
+  background: var(--accent); animation: pulse 2s infinite;
+}
+@keyframes pulse {
+  0%, 100% { opacity: 1; transform: scale(1); }
+  50% { opacity: 0.5; transform: scale(0.8); }
+}
+.land-h1 {
+  font-size: clamp(2.2rem, 6vw, 4rem);
+  font-weight: 800; letter-spacing: -0.04em;
+  line-height: 1.08; color: var(--text);
+  max-width: 820px; margin-bottom: 1.25rem;
+  position: relative;
+}
+.land-h1 em {
+  font-style: normal;
+  background: linear-gradient(135deg, var(--accent) 0%, #4facfe 100%);
+  -webkit-background-clip: text; -webkit-text-fill-color: transparent;
+  background-clip: text;
+}
+.land-sub {
+  font-size: 1.05rem; color: var(--text2); line-height: 1.7;
+  max-width: 540px; margin-bottom: 2.5rem; position: relative;
+}
+.land-cta-group {
+  display: flex; gap: 0.85rem; align-items: center;
+  flex-wrap: wrap; justify-content: center; position: relative;
+}
+.land-cta-primary {
+  height: 48px; padding: 0 2rem; border-radius: var(--r);
+  background: var(--text); color: #fff; font-size: 0.9rem;
+  font-weight: 700; border: none; cursor: pointer; font-family: var(--sans);
+  transition: all 0.2s; letter-spacing: -0.01em;
+  box-shadow: 0 4px 16px rgba(0,0,0,0.15);
+}
+.land-cta-primary:hover { transform: translateY(-2px); box-shadow: 0 8px 24px rgba(0,0,0,0.2); }
+.land-cta-secondary {
+  height: 48px; padding: 0 1.5rem; border-radius: var(--r);
+  background: transparent; color: var(--text2); font-size: 0.85rem;
+  font-weight: 500; border: 1px solid var(--border2); cursor: pointer;
+  font-family: var(--sans); transition: all 0.15s;
+}
+.land-cta-secondary:hover { border-color: var(--text3); color: var(--text); background: var(--bg2); }
+.land-cta-note {
+  font-size: 0.68rem; color: var(--text3); margin-top: 0.85rem;
+  width: 100%; text-align: center;
+}
+
+/* Stats strip */
+.land-stats {
+  display: flex; justify-content: center; gap: 0;
+  border-top: 1px solid var(--border); border-bottom: 1px solid var(--border);
+  background: var(--surface);
+}
+.land-stat {
+  flex: 1; max-width: 220px; padding: 1.5rem 1rem;
+  text-align: center; border-right: 1px solid var(--border);
+}
+.land-stat:last-child { border-right: none; }
+.land-stat-val {
+  font-family: var(--mono); font-size: 1.8rem; font-weight: 700;
+  color: var(--text); letter-spacing: -0.04em; line-height: 1;
+}
+.land-stat-lbl { font-size: 0.7rem; color: var(--text3); margin-top: 0.35rem; }
+
+/* How it works */
+.land-section {
+  padding: 5rem 2rem; max-width: 900px; margin: 0 auto; width: 100%;
+}
+.land-section-label {
+  font-family: var(--mono); font-size: 0.62rem; font-weight: 700;
+  text-transform: uppercase; letter-spacing: 0.12em; color: var(--accent);
+  margin-bottom: 0.75rem;
+}
+.land-section-title {
+  font-size: 1.75rem; font-weight: 700; letter-spacing: -0.03em;
+  color: var(--text); margin-bottom: 0.65rem; line-height: 1.2;
+}
+.land-section-sub {
+  font-size: 0.85rem; color: var(--text2); line-height: 1.7;
+  max-width: 540px; margin-bottom: 2.5rem;
+}
+.land-steps {
+  display: grid; grid-template-columns: repeat(3, 1fr); gap: 1px;
+  background: var(--border); border: 1px solid var(--border);
+  border-radius: var(--r2); overflow: hidden;
+}
+.land-step {
+  background: var(--surface); padding: 1.5rem;
+}
+.land-step-num {
+  font-family: var(--mono); font-size: 0.58rem; font-weight: 700;
+  color: var(--accent); margin-bottom: 0.75rem;
+}
+.land-step-icon { font-size: 1.5rem; margin-bottom: 0.65rem; }
+.land-step-title {
+  font-size: 0.85rem; font-weight: 700; color: var(--text);
+  margin-bottom: 0.35rem; letter-spacing: -0.01em;
+}
+.land-step-desc { font-size: 0.75rem; color: var(--text2); line-height: 1.6; }
+
+/* Problems section */
+.land-problems {
+  display: grid; grid-template-columns: 1fr 1fr; gap: 1rem;
+  margin-bottom: 1rem;
+}
+.land-problem {
+  background: var(--surface); border: 1px solid var(--border2);
+  border-radius: var(--r); padding: 1.1rem 1.25rem;
+  display: flex; gap: 0.85rem; align-items: flex-start;
+}
+.land-problem-icon {
+  font-size: 1.1rem; flex-shrink: 0; margin-top: 0.05rem;
+}
+.land-problem-text { font-size: 0.78rem; color: var(--text2); line-height: 1.6; }
+.land-problem-text strong { color: var(--text); display: block; margin-bottom: 0.15rem; font-size: 0.8rem; }
+
+/* Pricing */
+.land-pricing {
+  background: var(--surface); border: 1px solid var(--border2);
+  border-radius: var(--r2); overflow: hidden; max-width: 820px; margin: 0 auto;
+  display: grid; grid-template-columns: 1fr 1fr;
+}
+.land-plan {
+  padding: 2rem;
+}
+.land-plan:first-child { border-right: 1px solid var(--border2); }
+.land-plan-badge {
+  display: inline-block; font-size: 0.6rem; font-weight: 700;
+  text-transform: uppercase; letter-spacing: 0.1em;
+  padding: 0.2rem 0.55rem; border-radius: 99px;
+  border: 1px solid var(--border2); color: var(--text3);
+  margin-bottom: 1rem;
+}
+.land-plan-badge.pro { background: var(--text); color: #fff; border-color: var(--text); }
+.land-plan-price {
+  font-family: var(--mono); font-size: 2rem; font-weight: 700;
+  color: var(--text); letter-spacing: -0.04em; margin-bottom: 0.25rem;
+}
+.land-plan-price span { font-size: 0.85rem; font-weight: 400; color: var(--text3); }
+.land-plan-desc { font-size: 0.75rem; color: var(--text3); margin-bottom: 1.25rem; }
+.land-plan-features { display: flex; flex-direction: column; gap: 0.5rem; }
+.land-plan-feature {
+  font-size: 0.75rem; color: var(--text2);
+  display: flex; align-items: center; gap: 0.5rem;
+}
+.land-plan-feature::before { content: '✓'; color: var(--green); font-weight: 700; font-size: 0.7rem; }
+.land-plan-feature.muted { color: var(--text3); }
+.land-plan-feature.muted::before { content: '—'; color: var(--text3); }
+.land-plan-cta {
+  margin-top: 1.5rem; width: 100%; height: 40px;
+  border-radius: var(--r); font-size: 0.8rem; font-weight: 600;
+  border: none; cursor: pointer; font-family: var(--sans); transition: all 0.15s;
+}
+.land-plan-cta.free {
+  background: var(--bg2); color: var(--text2); border: 1px solid var(--border2);
+}
+.land-plan-cta.free:hover { background: var(--surface); color: var(--text); }
+.land-plan-cta.pro-btn {
+  background: var(--text); color: #fff;
+}
+.land-plan-cta.pro-btn:hover { background: #2a2a28; transform: translateY(-1px); }
+
+/* CTA section */
+.land-cta-section {
+  background: var(--text); padding: 5rem 2rem;
+  text-align: center;
+}
+.land-cta-section-title {
+  font-size: 2rem; font-weight: 800; letter-spacing: -0.04em;
+  color: #fff; margin-bottom: 0.75rem; line-height: 1.15;
+}
+.land-cta-section-sub {
+  font-size: 0.85rem; color: rgba(255,255,255,0.6);
+  margin-bottom: 2rem; line-height: 1.6;
+}
+.land-cta-section-btn {
+  height: 48px; padding: 0 2.5rem; border-radius: var(--r);
+  background: #fff; color: var(--text); font-size: 0.9rem;
+  font-weight: 700; border: none; cursor: pointer; font-family: var(--sans);
+  transition: all 0.2s;
+}
+.land-cta-section-btn:hover { transform: translateY(-2px); box-shadow: 0 8px 24px rgba(255,255,255,0.2); }
+
+/* Land footer */
+.land-footer {
+  padding: 1.5rem 2rem; border-top: 1px solid var(--border);
+  display: flex; align-items: center; justify-content: space-between;
+  flex-wrap: wrap; gap: 0.75rem;
+}
+.land-footer-brand { font-family: var(--mono); font-size: 0.65rem; color: var(--text3); }
+.land-footer-links { display: flex; gap: 1.25rem; }
+.land-footer-link {
+  font-size: 0.68rem; color: var(--text3); background: none;
+  border: none; cursor: pointer; font-family: var(--sans);
+  transition: color 0.15s; padding: 0; text-decoration: none;
+}
+.land-footer-link:hover { color: var(--text); }
+
+@media (max-width: 680px) {
+  .land-nav { padding: 0 1rem; }
+  .land-hero { padding: 3.5rem 1.25rem 2.5rem; }
+  .land-h1 { font-size: 2rem; }
+  .land-sub { font-size: 0.88rem; }
+  .land-stats { flex-wrap: wrap; }
+  .land-stat { min-width: 50%; border-bottom: 1px solid var(--border); }
+  .land-section { padding: 3rem 1.25rem; }
+  .land-steps { grid-template-columns: 1fr; }
+  .land-problems { grid-template-columns: 1fr; }
+  .land-pricing { grid-template-columns: 1fr; }
+  .land-plan:first-child { border-right: none; border-bottom: 1px solid var(--border2); }
+  .land-cta-section { padding: 3.5rem 1.25rem; }
+  .land-cta-section-title { font-size: 1.5rem; }
+  .land-footer { flex-direction: column; padding: 1.25rem; }
+}
+
 /* ── About Modal ── */
 .about-overlay {
   position: fixed; inset: 0; z-index: 800;
@@ -1516,6 +1812,7 @@ function Topbar({ step, sessionId, user, onSignIn, onSignOut, onAccount }) {
 // ─────────────────────────────────────────────────────────────
 // Upload
 // ─────────────────────────────────────────────────────────────
+
 const API_BASE = import.meta.env.VITE_API_URL || 'https://euremlytics-2.onrender.com'
 
 function UploadScreen({ onUploaded }) {
@@ -1530,7 +1827,7 @@ function UploadScreen({ onUploaded }) {
   const pick = f => {
     if (!f) return
     const ext = f.name.split('.').pop().toLowerCase()
-    if (!['csv','xlsx','xls'].includes(ext)) { setError('Only CSV and Excel files are supported.'); return }
+    if (!['csv','xlsx','xls'].includes(ext)) { setError(`'${f.name}' is not supported. Please upload a CSV or Excel (.xlsx, .xls) file.`); return }
     setError(''); setFile(f)
   }
 
@@ -1947,6 +2244,12 @@ function Dashboard({ result, sessionId, onViewReport, user, feedbackDone, onNeed
         <div className="btn-group">
           <button className="btn btn-ghost btn-sm" onClick={() => feedbackDone ? triggerDownload(csvDownloadUrl(sessionId)) : onNeedFeedback()}>↓ CSV</button>
           <button className="btn btn-ghost btn-sm" onClick={() => feedbackDone ? triggerDownload(pdfDownloadUrl(sessionId)) : onNeedFeedback()}>↓ PDF</button>
+          <button className="btn btn-ghost btn-sm" onClick={() => {
+            if (!feedbackDone) { onNeedFeedback(); return }
+            // Download CSV then open Sheets import
+            triggerDownload(csvDownloadUrl(sessionId))
+            setTimeout(() => window.open('https://sheets.new', '_blank'), 800)
+          }} title="Download CSV and open a new Google Sheet to import">↗ Sheets</button>
           <button className="btn btn-primary" onClick={onViewReport}>View Report →</button>
         </div>
       </div>
@@ -2367,6 +2670,182 @@ function FeedbackWidget({ user }) {
 }
 
 
+
+// ─────────────────────────────────────────────────────────────
+// Landing Page
+// ─────────────────────────────────────────────────────────────
+function LandingPage({ onSignUp, onSignIn, onAbout, onPrivacy, onTerms }) {
+
+  const PROBLEMS = [
+    { icon: '😤', title: 'Inconsistent formatting',      desc: 'Dates in five formats, currencies with and without symbols, mixed casing across the same column.' },
+    { icon: '🕳️', title: 'Missing values everywhere',    desc: 'Blank cells, "N/A", "null", dashes — all meaning the same thing but stored differently.' },
+    { icon: '👯', title: 'Silent duplicates',             desc: 'Duplicate rows that skew your totals and make your customer counts look bigger than they are.' },
+    { icon: '📉', title: 'Outliers killing averages',     desc: 'A single data entry error turns your average order value from ₦8,000 to ₦800,000.' },
+  ]
+
+  const STEPS = [
+    { num: '01', icon: '📂', title: 'Upload your file',     desc: 'CSV, Excel, or paste a Google Sheets URL. No setup required.' },
+    { num: '02', icon: '⚙️', title: 'Engine runs 8 stages', desc: 'Type inference, normalisation, deduplication, outlier handling, quality scoring and more.' },
+    { num: '03', icon: '✅', title: 'Download clean data',  desc: 'Get your cleaned CSV, a full PDF quality report, and an audit trail of every change.' },
+  ]
+
+  return (
+    <div className="land">
+
+      {/* Nav */}
+      <nav className="land-nav">
+        <div className="land-nav-logo">
+          <span>OXD</span>
+          <span className="land-nav-badge">BETA</span>
+        </div>
+        <div className="land-nav-spacer" />
+        <button className="land-nav-link" onClick={onAbout}>About</button>
+        <button className="land-nav-link" onClick={onSignIn}>Sign in</button>
+        <button className="land-nav-cta" onClick={onSignUp}>Get started free →</button>
+      </nav>
+
+      {/* Hero */}
+      <section className="land-hero">
+        <div className="land-hero-bg" />
+        <div className="land-eyebrow">
+          <div className="land-eyebrow-dot" />
+          Automated data cleaning engine
+        </div>
+        <h1 className="land-h1">
+          Make Your Business Data<br/><em>Reliable in Minutes.</em>
+        </h1>
+        <p className="land-sub">
+          Oxdemi automatically cleans, validates, scores, and audits your datasets — so you can trust your reports again. No code. No manual work.
+        </p>
+        <div className="land-cta-group">
+          <button className="land-cta-primary" onClick={onSignUp}>
+            Start cleaning for free →
+          </button>
+          <button className="land-cta-secondary" onClick={onAbout}>
+            See how it works
+          </button>
+        </div>
+        <div className="land-cta-note">Free up to 500 rows · No credit card required</div>
+      </section>
+
+      {/* Stats */}
+      <div className="land-stats">
+        {[
+          { val: '8',    lbl: 'Pipeline stages' },
+          { val: '500',  lbl: 'Free rows per file' },
+          { val: '< 10s', lbl: 'Avg. cleaning time' },
+          { val: '0',    lbl: 'Lines of code needed' },
+        ].map(s => (
+          <div className="land-stat" key={s.lbl}>
+            <div className="land-stat-val">{s.val}</div>
+            <div className="land-stat-lbl">{s.lbl}</div>
+          </div>
+        ))}
+      </div>
+
+      {/* Problem section */}
+      <section className="land-section">
+        <div className="land-section-label">The Problem</div>
+        <h2 className="land-section-title">Messy data is costing you hours every week</h2>
+        <p className="land-section-sub">
+          Every business runs on spreadsheets. And every spreadsheet has problems that silently break your reports, inflate your numbers, and erode your confidence in your own data.
+        </p>
+        <div className="land-problems">
+          {PROBLEMS.map(p => (
+            <div className="land-problem" key={p.title}>
+              <div className="land-problem-icon">{p.icon}</div>
+              <div className="land-problem-text">
+                <strong>{p.title}</strong>
+                {p.desc}
+              </div>
+            </div>
+          ))}
+        </div>
+      </section>
+
+      {/* How it works */}
+      <section className="land-section" style={{paddingTop:0}}>
+        <div className="land-section-label">How It Works</div>
+        <h2 className="land-section-title">Three steps to clean data</h2>
+        <p className="land-section-sub">Upload your file and Oxdemi's 8-stage engine handles everything automatically.</p>
+        <div className="land-steps">
+          {STEPS.map(s => (
+            <div className="land-step" key={s.num}>
+              <div className="land-step-num">{s.num}</div>
+              <div className="land-step-icon">{s.icon}</div>
+              <div className="land-step-title">{s.title}</div>
+              <div className="land-step-desc">{s.desc}</div>
+            </div>
+          ))}
+        </div>
+      </section>
+
+      {/* Pricing */}
+      <section className="land-section" style={{paddingTop:0}}>
+        <div className="land-section-label">Pricing</div>
+        <h2 className="land-section-title">Simple, transparent pricing</h2>
+        <p className="land-section-sub">Start free. Upgrade when you need more.</p>
+        <div className="land-pricing">
+          <div className="land-plan">
+            <div className="land-plan-badge">Free</div>
+            <div className="land-plan-price">₦0 <span>/month</span></div>
+            <div className="land-plan-desc">For individuals and small datasets</div>
+            <div className="land-plan-features">
+              <div className="land-plan-feature">Up to 500 rows per file</div>
+              <div className="land-plan-feature">All 8 pipeline stages</div>
+              <div className="land-plan-feature">CSV export</div>
+              <div className="land-plan-feature">Quality report</div>
+              <div className="land-plan-feature muted">PDF export</div>
+              <div className="land-plan-feature muted">Email summary</div>
+            </div>
+            <button className="land-plan-cta free" onClick={onSignUp}>Get started free</button>
+          </div>
+          <div className="land-plan">
+            <div className="land-plan-badge pro">Pro</div>
+            <div className="land-plan-price">₦10,000 <span>/month</span></div>
+            <div className="land-plan-desc">For teams and large datasets</div>
+            <div className="land-plan-features">
+              <div className="land-plan-feature">Unlimited rows</div>
+              <div className="land-plan-feature">All 8 pipeline stages</div>
+              <div className="land-plan-feature">CSV export</div>
+              <div className="land-plan-feature">Quality report</div>
+              <div className="land-plan-feature">PDF export</div>
+              <div className="land-plan-feature">Email summary after clean</div>
+            </div>
+            <button className="land-plan-cta pro-btn" onClick={onSignUp}>Start free trial →</button>
+          </div>
+        </div>
+      </section>
+
+      {/* CTA section */}
+      <div className="land-cta-section">
+        <div className="land-cta-section-title">Ready to trust your data again?</div>
+        <div className="land-cta-section-sub">
+          Join businesses using Oxdemi to clean their data faster.<br/>
+          Free to start. No credit card required.
+        </div>
+        <button className="land-cta-section-btn" onClick={onSignUp}>
+          Create your free account →
+        </button>
+      </div>
+
+      {/* Footer */}
+      <footer className="land-footer">
+        <span className="land-footer-brand">
+          <strong>Oxdemi.io</strong> · Raw in. Clean out. · © {new Date().getFullYear()} · Built in Nigeria 🇳🇬
+        </span>
+        <div className="land-footer-links">
+          <button className="land-footer-link" onClick={onAbout}>About</button>
+          <button className="land-footer-link" onClick={onPrivacy}>Privacy</button>
+          <button className="land-footer-link" onClick={onTerms}>Terms</button>
+          <a className="land-footer-link" href="mailto:hello@oxdemi.io">Contact</a>
+        </div>
+      </footer>
+
+    </div>
+  )
+}
+
 // ─────────────────────────────────────────────────────────────
 // About Modal
 // ─────────────────────────────────────────────────────────────
@@ -2625,10 +3104,10 @@ function AppFooter({ onPrivacy, onTerms, onAbout }) {
 // ─────────────────────────────────────────────────────────────
 // Root
 // ─────────────────────────────────────────────────────────────
-const FREE_ROW_LIMIT = 999999
+const FREE_ROW_LIMIT = 500
 
 export default function App() {
-  const [screen, setScreen]         = useState('upload')
+  const [screen, setScreen]         = useState('landing')
   const [uploadData, setUploadData] = useState(null)
   const [result, setResult]         = useState(null)
   const [user, setUser]             = useState(null)
@@ -2638,7 +3117,7 @@ export default function App() {
   const [showAbout, setShowAbout]         = useState(false)
   const [subscription, setSubscription] = useState('free')
   const [subChecked, setSubChecked]     = useState(false)
-  const [prevScreen, setPrevScreen]     = useState('upload')
+  const [prevScreen, setPrevScreen]     = useState('landing')
   const [feedbackDone, setFeedbackDone]   = useState(false)
   const [showFeedbackGate, setShowFeedbackGate] = useState(false)
 
@@ -2698,42 +3177,46 @@ export default function App() {
       if (session?.access_token) fetchSubscription(session.access_token)
       else { setSubscription('free'); setSubChecked(true) }
       if (session?.user && screen === 'auth') setScreen('upload')
+      if (session?.user && screen === 'landing') setScreen('upload')
     })
     return () => authSub.unsubscribe()
   }, [])
 
   const handleUploaded = (data) => {
-    // Not signed in → auth wall
-    if (!user && data.rows > FREE_ROW_LIMIT) {
-      setUploadData(data)
-      setAuthReason('row_limit')
+    setUploadData(data)
+    // Not signed in → auth wall (always)
+    if (!user) {
+      setAuthReason('upload_continue')
       setScreen('auth')
       return
     }
-    // Signed in but free tier → paywall
+    // Signed in but free tier + over limit → paywall
     if (user && subscription !== 'active' && data.rows > FREE_ROW_LIMIT) {
-      setUploadData(data)
       setScreen('paywall')
       return
     }
-    setUploadData(data)
     setScreen('clean')
   }
 
   const handleSignOut = async () => {
     await supabase.auth.signOut()
     setUser(null)
-    setScreen('upload')
+    setScreen('landing')
     setUploadData(null)
     setResult(null)
+    setFeedbackDone(false)
   }
 
   const handleAuth = (authUser) => {
     setUser(authUser)
-    // After sign in, if we hit row limit, continue to clean
-    if (authReason === 'row_limit' && uploadData) {
-      setAuthReason(null)
-      setScreen('clean')
+    setAuthReason(null)
+    // If they uploaded before signing in, continue to clean
+    if (uploadData) {
+      if (subscription !== 'active' && uploadData.rows > FREE_ROW_LIMIT) {
+        setScreen('paywall')
+      } else {
+        setScreen('clean')
+      }
     } else {
       setScreen('upload')
     }
@@ -2747,7 +3230,20 @@ export default function App() {
     <>
       <style>{G}</style>
 
-      {screen === 'auth' ? (
+      {screen === 'landing' ? (
+        <>
+          <LandingPage
+            onSignUp={() => { setAuthReason('signup'); setScreen('auth') }}
+            onSignIn={() => { setAuthReason('signin'); setScreen('auth') }}
+            onAbout={() => setShowAbout(true)}
+            onPrivacy={() => setLegalModal('privacy')}
+            onTerms={() => setLegalModal('terms')}
+          />
+          <FeedbackWidget user={user} />
+          {legalModal && <LegalModal type={legalModal} onClose={() => setLegalModal(null)} />}
+          {showAbout && <AboutModal onClose={() => setShowAbout(false)} />}
+        </>
+      ) : screen === 'auth' ? (
         <>
           <AuthScreen
             onAuth={handleAuth}
@@ -2788,7 +3284,40 @@ export default function App() {
             />
           )}
           {screen === 'clean' && uploadData && (
-            <CleanScreen uploadData={uploadData} onCleaned={r => { setResult(r); setScreen('dashboard') }} />
+            <CleanScreen uploadData={uploadData} onCleaned={r => {
+              setResult(r)
+              setScreen('dashboard')
+              // Send email summary if user is signed in
+              if (user?.email) {
+                const quality = r.column_quality_summary || []
+                const avgScore = quality.length
+                  ? quality.reduce((s, q) => s + q.quality_score, 0) / quality.length
+                  : 0
+                fetch('https://euremlytics-2.onrender.com/feedback/email-summary', {
+                  method: 'POST',
+                  headers: { 'Content-Type': 'application/json' },
+                  body: JSON.stringify({
+                    email:      user.email,
+                    filename:   uploadData.filename,
+                    orig_rows:  uploadData.rows,
+                    clean_rows: (r.cleaned_shape || [uploadData.rows])[0],
+                    columns:    (r.cleaned_shape || [0, uploadData.columns])[1],
+                    avg_score:  avgScore.toFixed(2),
+                    actions:    (r.audit_log || []).length,
+                    session_id: uploadData.session_id,
+                  })
+                }).catch(() => {}) // silent fail
+              }
+            }} />
+          )}
+
+          {screen === 'dashboard' && !result && (
+            <div className="page" style={{display:'flex',flexDirection:'column',alignItems:'center',justifyContent:'center',minHeight:'60vh',gap:'1rem',textAlign:'center'}}>
+              <div style={{fontSize:'2.5rem'}}>🤔</div>
+              <div style={{fontWeight:700, fontSize:'1rem', letterSpacing:'-0.02em'}}>Results not found</div>
+              <div style={{fontSize:'0.8rem', color:'var(--text3)', maxWidth:'280px', lineHeight:1.6}}>Your session may have expired. Please upload your file again — sessions last 30 minutes.</div>
+              <button className="btn btn-primary" onClick={() => setScreen('upload')}>← Start over</button>
+            </div>
           )}
           {screen === 'dashboard' && result && (
             <Dashboard
