@@ -59,13 +59,33 @@ def _read_file(contents: bytes, filename: str) -> pd.DataFrame:
     ext = ("." + filename.rsplit(".", 1)[-1].lower()) if "." in filename else ""
 
     if ext == ".csv":
+        import csv as _csv
+
+        def _detect_delimiter(raw: bytes, encoding: str) -> str:
+            """
+            Sniff the delimiter from the first 4KB of the file.
+            Falls back to comma if sniffer fails.
+            Candidate delimiters: , ; | \t
+            """
+            sample = raw[:4096].decode(encoding, errors="replace")
+            try:
+                dialect = _csv.Sniffer().sniff(sample, delimiters=",;|\t")
+                return dialect.delimiter
+            except _csv.Error:
+                # Manual fallback: count occurrences per line
+                first_line = sample.split("\n")[0]
+                counts = {d: first_line.count(d) for d in [",", ";", "|", "\t"]}
+                return max(counts, key=counts.get)
+
         for encoding in ("utf-8", "latin-1", "cp1252"):
             try:
+                sep = _detect_delimiter(contents, encoding)
                 return pd.read_csv(
                     io.BytesIO(contents),
                     encoding=encoding,
                     engine="python",         # handles multiline quoted strings
                     on_bad_lines="warn",     # warn but don't crash on bad rows
+                    sep=sep,
                     quotechar='"',
                     skipinitialspace=True,
                 )
@@ -74,11 +94,13 @@ def _read_file(contents: bytes, filename: str) -> pd.DataFrame:
             except Exception as e:
                 # Last resort: skip bad lines entirely
                 try:
+                    sep = _detect_delimiter(contents, encoding)
                     return pd.read_csv(
                         io.BytesIO(contents),
                         encoding=encoding,
                         engine="python",
                         on_bad_lines="skip",
+                        sep=sep,
                         skipinitialspace=True,
                     )
                 except Exception:
