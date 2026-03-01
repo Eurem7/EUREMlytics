@@ -503,3 +503,120 @@ def is_free_text_column(series: pd.Series) -> bool:
     unique_ratio = non_null.nunique() / len(non_null)
     avg_words    = non_null.str.split().str.len().mean()
     return unique_ratio > 0.7 and avg_words > 3
+
+
+# ─────────────────────────────────────────────────────────────
+# Fuzzy categorical clustering
+# Uses difflib.SequenceMatcher — no extra dependencies needed
+# ─────────────────────────────────────────────────────────────
+
+from difflib import SequenceMatcher
+from collections import Counter
+
+
+def _similarity(a: str, b: str) -> float:
+    """
+    Compute similarity between two strings, penalising containment relationships.
+    This prevents merging semantically different words where one contains the other
+    e.g. 'inactive' contains 'active' — should NOT be merged.
+    """
+    al, bl = a.lower(), b.lower()
+    base = SequenceMatcher(None, al, bl).ratio()
+    len_diff = abs(len(al) - len(bl))
+    shorter = al if len(al) < len(bl) else bl
+    longer  = bl if len(al) < len(bl) else al
+    # Penalise if shorter is a substring of longer AND length differs by 2+
+    if shorter in longer and len_diff >= 2:
+        base *= 0.85
+    return base
+
+
+def _find_canonical(cluster: list[str], freq: Counter) -> str:
+    """
+    Pick the canonical form from a cluster:
+    1. Most frequent value wins
+    2. Tie-break: fewest special chars (typos often have doubled letters)
+    3. Final tie-break: longest value (usually most complete)
+    """
+    def _score(v):
+        import re
+        # Penalise doubled consonants not in common patterns (typo signal)
+        doubled = len(re.findall(r"(.)\1", v.lower()))
+        return (freq[v], -doubled, len(v))
+    return max(cluster, key=_score)
+
+
+def fuzzy_cluster_series(
+    series: pd.Series,
+    threshold: float = 0.88,
+    min_cluster_size: int = 2,
+    max_unique: int = 80,
+) -> tuple[pd.Series, dict[str, str]]:
+    """
+    Cluster near-identical categorical values and map them to a canonical form.
+
+    Args:
+        series:           Input categorical series (already lowercased/stripped)
+        threshold:        Similarity threshold 0-1. 0.82 catches typos without
+                          merging genuinely different values.
+        min_cluster_size: Only merge clusters of 2+ values (avoid singletons)
+        max_unique:       Skip columns with too many unique values (e.g. names)
+                          to avoid expensive O(n²) comparisons.
+
+    Returns:
+        (normalised_series, remap_dict)
+        remap_dict maps original value → canonical value for audit log.
+
+    Algorithm:
+        1. Get all unique non-null values
+        2. For each value, find all other values above similarity threshold
+        3. Union-Find to group connected components
+        4. Pick canonical form per cluster (most frequent / longest)
+        5. Apply remapping
+    """
+    non_null = series.dropna()
+    uniques  = list(non_null.unique())
+
+    if len(uniques) > max_unique or len(uniques) < 2:
+        return series, {}
+
+    freq = Counter(non_null.tolist())
+
+    # Union-Find
+    parent = {v: v for v in uniques}
+
+    def find(x):
+        while parent[x] != x:
+            parent[x] = parent[parent[x]]
+            x = parent[x]
+        return x
+
+    def union(x, y):
+        parent[find(x)] = find(y)
+
+    # Compare all pairs
+    for i in range(len(uniques)):
+        for j in range(i + 1, len(uniques)):
+            a, b = uniques[i], uniques[j]
+            if _similarity(a, b) >= threshold:
+                union(a, b)
+
+    # Group into clusters
+    clusters: dict[str, list[str]] = {}
+    for v in uniques:
+        root = find(v)
+        clusters.setdefault(root, []).append(v)
+
+    # Build remap — only for clusters with 2+ values (actual merges)
+    remap: dict[str, str] = {}
+    for cluster in clusters.values():
+        if len(cluster) >= min_cluster_size:
+            canonical = _find_canonical(cluster, freq)
+            for v in cluster:
+                if v != canonical:
+                    remap[v] = canonical
+
+    if not remap:
+        return series, {}
+
+    return series.map(lambda x: remap.get(x, x) if pd.notna(x) else x), remap
