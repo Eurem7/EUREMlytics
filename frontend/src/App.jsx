@@ -3166,6 +3166,14 @@ export default function App() {
 
   // Listen for auth state changes
   useEffect(() => {
+    // ── Strip auth tokens from URL immediately ──
+    // When Supabase redirects back after OAuth, it appends tokens to the
+    // URL hash (#access_token=...). If the user copies and shares this URL,
+    // the recipient would be logged in as them. Clearing the hash prevents this.
+    if (window.location.hash && window.location.hash.includes('access_token')) {
+      window.history.replaceState({}, document.title, window.location.pathname + window.location.search)
+    }
+
     supabase.auth.getSession().then(({ data: { session } }) => {
       setUser(session?.user || null)
       setAuthChecked(true)
