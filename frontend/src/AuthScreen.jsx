@@ -276,6 +276,14 @@ export default function AuthScreen({ onAuth, reason, onPrivacy, onTerms }) {
                 </div>
               </div>
             )}
+            {reason === 'upload_continue' && (
+              <div className="row-limit-banner" style={{background:'rgba(26,107,255,0.06)', borderColor:'rgba(26,107,255,0.2)', color:'var(--accent)'}}>
+                <span className="row-limit-banner-icon">🔐</span>
+                <div className="row-limit-banner-text">
+                  <strong>Almost there!</strong> Create a free account or sign in to clean your file.
+                </div>
+              </div>
+            )}
 
             <div className="auth-title">
               {mode === 'signup' ? 'Create your account' :
