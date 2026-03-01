@@ -11,7 +11,17 @@ if (!SUPABASE_URL || !SUPABASE_ANON_KEY) {
   console.warn('Missing Supabase env vars — set VITE_SUPABASE_URL and VITE_SUPABASE_ANON_KEY')
 }
 
-export const supabase = createClient(SUPABASE_URL, SUPABASE_ANON_KEY)
+export const supabase = createClient(SUPABASE_URL, SUPABASE_ANON_KEY, {
+  auth: {
+    // Use localStorage (not URL hash) to store sessions.
+    // This prevents session tokens appearing in the URL after OAuth login,
+    // which would allow anyone who receives the URL to hijack the session.
+    flowType: 'pkce',
+    detectSessionInUrl: true,
+    persistSession: true,
+    storageKey: 'oxdemi-auth',
+  }
+})
 
 /** Get current session JWT token for API calls */
 export async function getAuthToken() {
