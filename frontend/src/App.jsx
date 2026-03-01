@@ -2244,12 +2244,7 @@ function Dashboard({ result, sessionId, onViewReport, user, feedbackDone, onNeed
         <div className="btn-group">
           <button className="btn btn-ghost btn-sm" onClick={() => feedbackDone ? triggerDownload(csvDownloadUrl(sessionId)) : onNeedFeedback()}>↓ CSV</button>
           <button className="btn btn-ghost btn-sm" onClick={() => feedbackDone ? triggerDownload(pdfDownloadUrl(sessionId)) : onNeedFeedback()}>↓ PDF</button>
-          <button className="btn btn-ghost btn-sm" onClick={() => {
-            if (!feedbackDone) { onNeedFeedback(); return }
-            // Download CSV then open Sheets import
-            triggerDownload(csvDownloadUrl(sessionId))
-            setTimeout(() => window.open('https://sheets.new', '_blank'), 800)
-          }} title="Download CSV and open a new Google Sheet to import">↗ Sheets</button>
+          <SheetsExportButton sessionId={sessionId} feedbackDone={feedbackDone} onNeedFeedback={onNeedFeedback} />
           <button className="btn btn-primary" onClick={onViewReport}>View Report →</button>
         </div>
       </div>
@@ -2670,6 +2665,98 @@ function FeedbackWidget({ user }) {
 }
 
 
+
+
+// ─────────────────────────────────────────────────────────────
+// Google Sheets Export Button
+// Fetches the cleaned CSV from the backend, converts to a blob
+// URL, then uses a data URI approach to pre-fill a Google Sheet
+// ─────────────────────────────────────────────────────────────
+const BACKEND = import.meta.env.VITE_API_URL || 'https://euremlytics-2.onrender.com'
+
+function SheetsExportButton({ sessionId, feedbackDone, onNeedFeedback }) {
+  const [state, setState] = useState('idle') // idle | loading | done | error
+  const [toast, setToast] = useState(null)
+
+  const handleClick = async () => {
+    if (!feedbackDone) { onNeedFeedback(); return }
+    if (state === 'loading') return
+
+    setState('loading')
+    try {
+      // 1. Fetch the cleaned CSV from backend
+      const res = await fetch(`${BACKEND}/report/csv?session_id=${sessionId}`)
+      if (!res.ok) throw new Error('Could not fetch cleaned data')
+      const csvText = await res.text()
+
+      // 2. Parse CSV into rows
+      const rows = csvText.trim().split('\n').map(r =>
+        r.split(',').map(cell => cell.replace(/^"|"$/g, '').replace(/""/g, '"'))
+      )
+
+      // 3. Encode as TSV (Google Sheets paste-compatible)
+      const tsv = rows.map(r => r.join('\t')).join('\n')
+
+      // 4. Copy TSV to clipboard
+      await navigator.clipboard.writeText(tsv)
+
+      // 5. Open a new Google Sheet
+      window.open('https://sheets.new', '_blank')
+
+      setState('done')
+      setToast('Cleaned data copied to clipboard! In your new sheet: click cell A1, then press Ctrl+V (or Cmd+V)')
+      setTimeout(() => { setState('idle'); setToast(null) }, 7000)
+
+    } catch (e) {
+      // Clipboard fallback — just download and show instructions
+      const csvUrl = `${BACKEND}/report/csv?session_id=${sessionId}`
+      const a = document.createElement('a')
+      a.href = csvUrl
+      a.download = `cleaned_${sessionId.slice(0,8)}.csv`
+      a.click()
+      window.open('https://sheets.new', '_blank')
+      setState('done')
+      setToast('File downloading. In your new sheet: File → Import → Upload the downloaded CSV')
+      setTimeout(() => { setState('idle'); setToast(null) }, 8000)
+    }
+  }
+
+  return (
+    <div style={{position:'relative', display:'inline-block'}}>
+      <button
+        className="btn btn-ghost btn-sm"
+        onClick={handleClick}
+        disabled={state === 'loading'}
+        title="Export cleaned data directly to Google Sheets"
+      >
+        {state === 'loading' ? '…' : (
+          <>
+            <svg width="11" height="11" viewBox="0 0 24 24" fill="none" style={{marginRight:'3px',verticalAlign:'middle'}}>
+              <rect x="3" y="3" width="18" height="18" rx="2" fill="#0F9D58"/>
+              <path d="M7 8h10M7 12h10M7 16h6" stroke="#fff" strokeWidth="1.8" strokeLinecap="round"/>
+            </svg>
+            Sheets
+          </>
+        )}
+      </button>
+      {toast && (
+        <div style={{
+          position:'fixed', bottom:'1.5rem', left:'50%', transform:'translateX(-50%)',
+          background:'#1a1a18', color:'#fff', borderRadius:'8px',
+          padding:'0.85rem 1.25rem', fontSize:'0.75rem', lineHeight:'1.5',
+          maxWidth:'360px', textAlign:'center', zIndex:9999,
+          boxShadow:'0 8px 24px rgba(0,0,0,0.25)',
+          animation:'fadeIn 0.2s ease',
+        }}>
+          <div style={{marginBottom:'0.35rem', fontSize:'0.65rem', opacity:0.6, textTransform:'uppercase', letterSpacing:'0.08em'}}>
+            Google Sheets Export
+          </div>
+          {toast}
+        </div>
+      )}
+    </div>
+  )
+}
 
 // ─────────────────────────────────────────────────────────────
 // Landing Page
