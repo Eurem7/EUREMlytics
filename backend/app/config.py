@@ -60,6 +60,10 @@ class CleaningConfig:
     #   "remove" → drop outlier rows from the DataFrame
     outlier_action: str = "none"
 
+    # Fuzzy matching threshold for categorical columns (0 = disabled, 0.82 = default)
+    # Higher = stricter (fewer merges), Lower = more aggressive (more merges)
+    fuzzy_threshold: float = 0.88
+
     # ── Low variance ─────────────────────────────────────────────
     # Columns where one value appears in >= this fraction of rows
     # are logged as near-constant (not auto-dropped)
