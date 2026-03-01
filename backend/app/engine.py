@@ -179,11 +179,17 @@ class EnterpriseDataEngine:
             s = s.str.strip()
             s = s.str.replace(r"\s+", " ", regex=True)
 
-            # Lowercase
-            s = s.str.lower()
+            # Lowercase — skip for title/name/description columns
+            _PRESERVE = re.compile(
+                r"(name|title|description|label|address|city|street|company|"
+                r"brand|product|director|author|actor|artist)",
+                re.IGNORECASE,
+            )
+            if not _PRESERVE.search(col):
+                s = s.str.lower()
 
-            # Placeholder -> NaN
-            s = s.apply(lambda x: np.nan if x in PLACEHOLDER_VALUES else x)
+            # Placeholder -> NaN (check lowercased version)
+            s = s.apply(lambda x: np.nan if str(x).lower() in PLACEHOLDER_VALUES else x)
 
             self.df[col] = s
             after_nulls = int(self.df[col].isna().sum())
@@ -443,14 +449,21 @@ class EnterpriseDataEngine:
             return
 
         strategy = self.config.impute_numeric_strategy
+        # Detect if column contains only whole numbers — use integer imputation
+        _non_null = self.df[col].dropna()
+        _is_integer_col = len(_non_null) > 0 and (_non_null % 1 == 0).all()
+
         if strategy == "median":
-            fill_value = round(float(self.df[col].median()), 4)
+            _raw = float(self.df[col].median())
+            fill_value = int(round(_raw)) if _is_integer_col else round(_raw, 4)
         elif strategy == "mean":
-            fill_value = round(float(self.df[col].mean()), 4)
+            _raw = float(self.df[col].mean())
+            fill_value = int(round(_raw)) if _is_integer_col else round(_raw, 4)
         elif strategy == "zero":
-            fill_value = 0.0
+            fill_value = 0 if _is_integer_col else 0.0
         else:
-            fill_value = round(float(self.df[col].median()), 4)
+            _raw = float(self.df[col].median())
+            fill_value = int(round(_raw)) if _is_integer_col else round(_raw, 4)
 
         n_imputed = int(self.df[col].isna().sum())
         self.df[col] = self.df[col].fillna(fill_value)
@@ -469,6 +482,45 @@ class EnterpriseDataEngine:
             "outlier_pct": round(outlier_ratio * 100, 1),
             "imputation_method": strategy,
         })
+
+    @staticmethod
+    def _try_parse_dates(series: pd.Series) -> pd.Series:
+        """
+        Try multiple date formats in sequence to maximise parse rate.
+        Returns a datetime series with NaT for unparseable values.
+        """
+        FORMATS = [
+            "%Y-%m-%d", "%d/%m/%Y", "%m/%d/%Y", "%d-%m-%Y", "%m-%d-%Y",
+            "%Y/%m/%d", "%d %m %Y", "%m %d %Y", "%Y %m %d",
+            "%d-%b-%y", "%d-%b-%Y", "%b %d, %Y", "%B %d, %Y",
+            "%d/%m/%y", "%m/%d/%y", "%y-%m-%d",
+        ]
+        best = pd.Series(pd.NaT, index=series.index)
+        remaining = series.copy()
+
+        for fmt in FORMATS:
+            mask = remaining.notna()
+            if not mask.any():
+                break
+            try:
+                parsed = pd.to_datetime(remaining[mask], format=fmt, errors="coerce")
+                filled = parsed.notna()
+                best[remaining[mask][filled].index] = parsed[filled]
+                remaining[remaining[mask][filled].index] = np.nan
+            except Exception:
+                continue
+
+        # Final pass with inference for anything remaining
+        mask = remaining.notna()
+        if mask.any():
+            try:
+                parsed = pd.to_datetime(remaining[mask], infer_datetime_format=True, errors="coerce")
+                filled = parsed.notna()
+                best[remaining[mask][filled].index] = parsed[filled]
+            except Exception:
+                pass
+
+        return best
 
     def _process_datetime(self, col: str, converted: pd.Series, confidence: float) -> None:
         self.df[col] = converted
