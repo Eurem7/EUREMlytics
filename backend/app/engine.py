@@ -1,5 +1,5 @@
 """
-
+EnterpriseDataEngine
 ====================
 Production-grade data cleaning pipeline.
 
@@ -41,6 +41,7 @@ from .utils import (
     normalise_phone,
     normalise_percentage,
     is_free_text_column,
+    fuzzy_cluster_series,
     sanitize_numeric,
     strip_control_chars,
     detect_outliers_iqr,
@@ -603,6 +604,29 @@ class EnterpriseDataEngine:
                       missing_pct=round(missing_ratio * 100, 1))
             return
 
+        # ── Fuzzy clustering — merge near-identical values ──
+        # e.g. "Lagoss" → "Lagos", "Actve" → "Active", "port harcout" → "port harcourt"
+        # Only applied to low-cardinality columns (< 80 unique values)
+        # Threshold 0.82 catches typos without merging genuinely different values
+        fuzz_threshold = getattr(self.config, "fuzzy_threshold", 0.82)
+        if fuzz_threshold > 0:
+            fuzzed, remap = fuzzy_cluster_series(
+                series.dropna().astype(str),
+                threshold=fuzz_threshold,
+            )
+            if remap:
+                # Apply remap to full series (including nulls)
+                self.df[col] = series.map(
+                    lambda x: remap.get(str(x), str(x)) if pd.notna(x) else x
+                )
+                series = self.df[col]
+                self._log(
+                    action="fuzzy_clustering",
+                    column=col,
+                    merges=len(remap),
+                    remap=remap,
+                )
+
         self.df[col] = series.astype("category")
 
         n_missing = int(self.df[col].isna().sum())
@@ -618,14 +642,18 @@ class EnterpriseDataEngine:
 
         n_unique = self.df[col].nunique()
         cardinality_ratio = n_unique / max(len(self.df), 1)
+
+        # Quality score accounts for fuzzy merges — more merges = lower initial consistency
+        fuzzy_penalty = min(len(remap) / max(n_unique + len(remap), 1), 0.15) if 'remap' in dir() else 0
         self.column_quality.append({
             "column": col, "type": "categorical",
-            "quality_score": round(1 - missing_ratio, 4),
+            "quality_score": round(max(0, 1 - missing_ratio - fuzzy_penalty), 4),
             "dropped": False,
             "missing_pct": round(missing_ratio * 100, 1),
             "unique_values": n_unique,
             "cardinality_ratio": round(cardinality_ratio, 4),
             "high_cardinality_warning": cardinality_ratio > 0.5,
+            "fuzzy_merges": len(remap) if 'remap' in dir() else 0,
         })
 
     # Patterns that strongly suggest a column is an identifier
@@ -822,7 +850,7 @@ class EnterpriseDataEngine:
             "shape":                list(self.df.shape),
             "original_shape":       list(self.original_df.shape),
             "rows_removed":         self._total_rows - len(self.df),
-            "summary_statistics":   numeric_df.describe().round(4).to_dict(),
+            "summary_statistics":   numeric_df.describe().round(4).to_dict() if not numeric_df.empty else {},
             "missing_values":       self.df.isna().sum().to_dict(),
             "missing_pct":          (self.df.isna().mean() * 100).round(2).to_dict(),
             "correlation_matrix":   numeric_df.corr().round(4).to_dict(),
@@ -878,4 +906,3 @@ class EnterpriseDataEngine:
             "column_quality_summary": self.column_quality,
             "eda_report":             eda,
         }
-
