@@ -51,7 +51,6 @@ UNIT_PATTERNS: list[str] = [
     r"\bft²\b",
     # Weight / volume
     r"\bkg\b",
-    r"\bg\b",
     r"\blbs?\b",
     r"\boz\b",
     r"\blitres?\b",
@@ -75,6 +74,31 @@ UNIT_PATTERNS: list[str] = [
 # Add domain-specific maps as new dicts in this list.
 # ─────────────────────────────────────────────────────────────
 ABBREVIATION_MAPS: list[dict[str, str]] = [
+    # Country name normalisation
+    {
+        "us":            "usa",
+        "us.":           "usa",
+        "u.s.":          "usa",
+        "u.s.a.":        "usa",
+        "united states": "usa",
+        "uk":            "uk",
+        "u.k.":          "uk",
+        "united kingdom":"uk",
+        "great britain": "uk",
+        "gb":            "uk",
+        "new zesland":   "new zealand",
+        "new zeland":    "new zealand",
+        "nz":            "new zealand",
+        "italy1":        "italy",
+        "italia":        "italy",
+        "south korea":   "south korea",
+        "korea":         "south korea",
+        "west germany":  "germany",
+        "deutschland":   "germany",
+        "fr":            "france",
+        "jp":            "japan",
+        "in":            "india",
+    },
     # Property / house types
     {
         "terr.":           "terraced",
