@@ -38,6 +38,9 @@ from .utils import (
     PLACEHOLDER_VALUES,
     UNIT_PATTERNS,
     ABBREVIATION_MAPS,
+    normalise_phone,
+    normalise_percentage,
+    is_free_text_column,
     sanitize_numeric,
     strip_control_chars,
     detect_outliers_iqr,
@@ -152,14 +155,22 @@ class EnterpriseDataEngine:
     # Step 2 — String normalisation
     # ──────────────────────────────────────────
 
+    # Columns that should preserve original casing — IDs, names, phones, titles
+    _PRESERVE_CASE = re.compile(
+        r"(_id$|_ids$|\bid\b|\bids\b|uuid|guid|\bref\b|\bcode\b|\bsku\b|serial|barcode|hash|"
+        r"name|title|description|label|address|company|brand|product|"
+        r"director|author|actor|artist|"
+        r"phone|mobile|\btel\b|telephone|gsm|whatsapp|contact)",
+        re.IGNORECASE,
+    )
+
     def normalise_strings(self) -> None:
         """
         For every object column:
-          - Decode unicode noise (\\xa0, zero-width spaces, etc.)
-          - Strip control characters (\\r \\n \\t)
+          - Decode unicode noise (xa0, zero-width spaces, BOM)
+          - Strip control characters
           - Collapse internal whitespace
-          - Strip leading/trailing whitespace
-          - Lowercase
+          - Lowercase (except ID / name / phone / title columns)
           - Replace known placeholder strings with NaN
         """
         object_cols = self.df.select_dtypes(include="object").columns
@@ -168,9 +179,9 @@ class EnterpriseDataEngine:
             s = self.df[col].astype(str)
 
             # Unicode noise
-            s = s.str.replace(u"\xa0", " ", regex=False)    # non-breaking space
-            s = s.str.replace(u"\u200b", "", regex=False)   # zero-width space
-            s = s.str.replace(u"\ufeff", "", regex=False)   # BOM
+            s = s.str.replace(u"\xa0", " ", regex=False)
+            s = s.str.replace(u"\u200b", "", regex=False)
+            s = s.str.replace(u"\ufeff", "", regex=False)
 
             # Control characters
             s = s.str.replace(r"[\r\n\t\x00-\x1f\x7f]", " ", regex=True)
@@ -179,27 +190,18 @@ class EnterpriseDataEngine:
             s = s.str.strip()
             s = s.str.replace(r"\s+", " ", regex=True)
 
-            # Lowercase — skip for title/name/description columns
-            _PRESERVE = re.compile(
-                r"(name|title|description|label|address|city|street|company|"
-                r"brand|product|director|author|actor|artist)",
-                re.IGNORECASE,
-            )
-            if not _PRESERVE.search(col):
+            # Lowercase — preserve case for IDs, phones, names, titles
+            _is_pre_id = col in getattr(self, '_pre_identified_id_cols', set())
+            if not self._PRESERVE_CASE.search(col) and not _is_pre_id:
                 s = s.str.lower()
 
-            # Placeholder -> NaN (check lowercased version)
+            # Placeholder -> NaN
             s = s.apply(lambda x: np.nan if str(x).lower() in PLACEHOLDER_VALUES else x)
 
             self.df[col] = s
             after_nulls = int(self.df[col].isna().sum())
             new_nulls = after_nulls - before_nulls
-
-            self._log(
-                action="string_normalisation",
-                column=col,
-                placeholders_nulled=new_nulls,
-            )
+            self._log(action="string_normalisation", column=col, placeholders_nulled=new_nulls)
 
     # ──────────────────────────────────────────
     # Step 3 — Unit stripping
@@ -302,17 +304,23 @@ class EnterpriseDataEngine:
             "%d %B %Y", "%b %d, %Y", "%B %d, %Y",
             "%b %d %Y", "%B %d %Y",
         ]
-        date_try = None
-        date_ratio = 0.0
         str_sample = non_null.astype(str)
         # Quick gate: passes numeric-separator dates AND month-name dates
-        # e.g. 2021-10-19, 22/03/2022, Jul 1, 2004, Aug 30, 2015
-        _numeric_date  = r"\d{2,4}[-/\s]\d{1,2}[-/\s]\d{2,4}"
+        _numeric_date   = r"\d{2,4}[-/\s]\d{1,2}[-/\s]\d{2,4}"
         _monthname_date = r"(?:jan|feb|mar|apr|may|jun|jul|aug|sep|oct|nov|dec)\s+\d{1,2}"
         looks_like_date = str_sample.str.contains(
             rf"(?:{_numeric_date}|{_monthname_date})", regex=True, case=False
         ).mean()
-        if looks_like_date >= 0.5:
+
+        date_try   = None
+        date_ratio = 0.0
+
+        if looks_like_date >= 0.3:
+            # Use multi-format parser for maximum coverage
+            dt_multi = self._try_parse_dates(series)
+            multi_ratio = dt_multi.notna().sum() / max(len(non_null), 1)
+
+            # Also try single-format pass for confidence
             for fmt in DATE_FORMATS:
                 try:
                     dt = pd.to_datetime(series, format=fmt, errors="coerce")
@@ -322,7 +330,14 @@ class EnterpriseDataEngine:
                         date_try = dt
                 except Exception:
                     continue
-        if date_ratio >= self.config.datetime_confidence:
+
+            # Use whichever got more dates parsed
+            if multi_ratio > date_ratio:
+                date_ratio = multi_ratio
+                date_try   = dt_multi
+
+        # Use 0.75 threshold — mixed-format date columns rarely hit 0.85
+        if date_ratio >= max(0.75, self.config.datetime_confidence * 0.88):
             return "datetime", date_try, round(date_ratio, 4)
 
         # ── Numeric ──
@@ -623,6 +638,10 @@ class EnterpriseDataEngine:
         r"\b(url|link|href|uri|photo|image|img|avatar|thumbnail|src)\b",
         re.IGNORECASE,
     )
+    _PHONE_COLUMN_NAME_PATTERN = re.compile(
+        r"\b(phone|mobile|tel|telephone|gsm|whatsapp|contact_no|contact_num)\b",
+        re.IGNORECASE,
+    )
 
     def _is_id_column(self, col: str, series: pd.Series) -> bool:
         """
@@ -639,6 +658,10 @@ class EnterpriseDataEngine:
 
         # Signal 2 — URL-named columns (photoUrl, playerUrl)
         if self._URL_COLUMN_NAME_PATTERN.search(col_clean):
+            return True
+
+        # Signal 3 — Phone columns must stay as strings (leading zeros matter)
+        if self._PHONE_COLUMN_NAME_PATTERN.search(col_clean):
             return True
 
         # Signal 3 — all-unique integer values in a large enough dataset
@@ -666,7 +689,8 @@ class EnterpriseDataEngine:
 
         # ── ID / URL columns → force categorical, skip type inference ──
         if self._is_id_column(col, series):
-            self.df[col] = series.astype(str).str.strip().str.lower()
+            # Preserve original casing — IDs like C001, REF-999 must not be lowercased
+            self.df[col] = series.astype(str).str.strip()
             self.df[col] = self.df[col].astype("category")
             n_unique = self.df[col].nunique()
             self.column_quality.append({
@@ -681,6 +705,43 @@ class EnterpriseDataEngine:
             })
             self._log(action="id_column_forced_categorical", column=col,
                       unique_values=n_unique)
+            return
+
+        # ── Phone number detection ──
+        _PHONE_COL = re.compile(r"\b(phone|mobile|tel|telephone|gsm|contact|whatsapp)\b", re.IGNORECASE)
+        if _PHONE_COL.search(col):
+            normalised = normalise_phone(series)
+            if (normalised != series).any():
+                self.df[col] = normalised
+                self._log(action="phone_normalisation", column=col,
+                          cells_affected=int((normalised != series).sum()))
+            series = self.df[col]
+
+        # ── Percentage detection ──
+        _PCT_COL = re.compile(r"\b(pct|percent|percentage|rate|ratio|share)\b", re.IGNORECASE)
+        pct_normalised, was_pct = normalise_percentage(series)
+        if was_pct:
+            self.df[col] = pct_normalised.astype(float)
+            series = self.df[col]
+            self._log(action="percentage_normalisation", column=col,
+                      note="converted % values to 0-1 decimal")
+
+        # ── Free-text detection → skip imputation ──
+        _FREETEXT_COL = re.compile(r"\b(address|description|note|comment|remark|feedback|bio|summary|detail)\b", re.IGNORECASE)
+        if _FREETEXT_COL.search(col) or is_free_text_column(series):
+            self.df[col] = series.astype("category")
+            n_unique = self.df[col].nunique()
+            self.column_quality.append({
+                "column": col, "type": "free_text",
+                "quality_score": round(1 - float(series.isna().mean()), 4),
+                "dropped": False,
+                "missing_pct": round(float(series.isna().mean()) * 100, 1),
+                "unique_values": n_unique,
+                "cardinality_ratio": round(n_unique / max(len(self.df), 1), 4),
+                "high_cardinality_warning": True,
+                "free_text": True,
+            })
+            self._log(action="free_text_detected", column=col, unique_values=n_unique)
             return
 
         inferred_type, converted, confidence = self._infer_type(series)
@@ -787,6 +848,11 @@ class EnterpriseDataEngine:
                   config=self.config.__dict__)
 
         self.normalise_column_headers()
+        # Pre-scan ID columns so normalise_strings can skip lowercasing them
+        self._pre_identified_id_cols = {
+            col for col in self.df.columns
+            if self._is_id_column(col, self.df[col])
+        }
         self.normalise_strings()
         self.strip_units()
         self.harmonise_categories()
