@@ -46,7 +46,7 @@ def clean_data(
     df = _get_dataframe(session_id)
 
     # ── Row limit enforcement ──
-    FREE_ROW_LIMIT = 999999
+    FREE_ROW_LIMIT = 500
     if len(df) > FREE_ROW_LIMIT:
         # Check subscription via Supabase
         import httpx as _httpx
