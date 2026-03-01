@@ -74,6 +74,47 @@ UNIT_PATTERNS: list[str] = [
 # Add domain-specific maps as new dicts in this list.
 # ─────────────────────────────────────────────────────────────
 ABBREVIATION_MAPS: list[dict[str, str]] = [
+    # Nigerian city/state abbreviations
+    {
+        "ph":              "port harcourt",
+        "phc":             "port harcourt",
+        "p.h":             "port harcourt",
+        "p.h.c":           "port harcourt",
+        "fct":             "abuja",
+        "abj":             "abuja",
+        "lag":             "lagos",
+        "ikeja":           "lagos",
+        "vi":              "lagos",
+        "v.i":             "lagos",
+        "lekki":           "lagos",
+        "aba":             "aba",
+        "enugu":           "enugu",
+        "kano":            "kano",
+        "ibadan":          "ibadan",
+        "benin":           "benin city",
+        "benin city":      "benin city",
+        "warri":           "warri",
+        "calabar":         "calabar",
+        "uyo":             "uyo",
+        "jos":             "jos",
+        "kaduna":          "kaduna",
+        "maiduguri":       "maiduguri",
+        "zaria":           "zaria",
+        "ilorin":          "ilorin",
+        "onitsha":         "onitsha",
+        "owerri":          "owerri",
+        "asaba":           "asaba",
+        "yola":            "yola",
+        "bauchi":          "bauchi",
+        "gombe":           "gombe",
+        "makurdi":         "makurdi",
+        "lokoja":          "lokoja",
+        "akure":           "akure",
+        "ado ekiti":       "ado-ekiti",
+        "ado-ekiti":       "ado-ekiti",
+        "osogbo":          "osogbo",
+        "abeokuta":        "abeokuta",
+    },
     # Country name normalisation
     {
         "us":            "usa",
@@ -139,6 +180,23 @@ ABBREVIATION_MAPS: list[dict[str, str]] = [
         "self emp":   "self-employed",
         "self-emp":   "self-employed",
         "unemployed": "unemployed",
+    },
+
+    # Boolean variants
+    {
+        "true":    "true",
+        "false":   "false",
+        "yes":     "true",
+        "no":      "false",
+        "1":       "true",
+        "0":       "false",
+        "on":      "true",
+        "off":     "false",
+        "active":  "active",
+        "inactive":"inactive",
+        "✓":       "true",
+        "✗":       "false",
+        "✘":       "false",
     },
 ]
 
@@ -356,3 +414,92 @@ def detect_outliers_zscore(series: pd.Series, threshold: float = 3.0) -> pd.Seri
         return pd.Series(False, index=series.index)
     z_scores = (series - mean).abs() / std
     return z_scores > threshold
+
+
+# ─────────────────────────────────────────────────────────────
+# Phone number normalisation
+# ─────────────────────────────────────────────────────────────
+
+_PHONE_STRIP = re.compile(r"[\s\-\.\(\)]+")
+_NIGERIAN_MOBILE = re.compile(r"^(?:\+?234|0)(7|8|9)\d{9}$")
+
+def normalise_phone(series: pd.Series) -> pd.Series:
+    """
+    Normalise Nigerian phone numbers to 11-digit local format (080xxxxxxxx).
+    - Strips spaces, dashes, dots, brackets
+    - Converts +234xxxxxxxxx → 0xxxxxxxxx
+    - Returns original value if it doesn't look like a phone number
+    """
+    def _fix(val):
+        if not isinstance(val, str):
+            return val
+        clean = _PHONE_STRIP.sub("", val)
+        # +2348012345678 → 08012345678
+        if clean.startswith("+234") and len(clean) == 14:
+            clean = "0" + clean[4:]
+        # 2348012345678 → 08012345678
+        elif clean.startswith("234") and len(clean) == 13:
+            clean = "0" + clean[3:]
+        if _NIGERIAN_MOBILE.match(clean):
+            return clean
+        return val  # not a recognised phone — return as-is
+    return series.apply(_fix)
+
+
+# ─────────────────────────────────────────────────────────────
+# Percentage normalisation
+# ─────────────────────────────────────────────────────────────
+
+def normalise_percentage(series: pd.Series) -> tuple[pd.Series, bool]:
+    """
+    Detect and normalise percentage columns.
+    Returns (normalised_series, was_percentage_column).
+
+    Handles:
+      "45%"  → 0.45
+      "45"   → 0.45  (if all values 0-100 and column name has % hint)
+      "0.45" → 0.45  (already decimal form)
+    """
+    s = series.astype(str).str.strip()
+    has_pct_sign = s.str.endswith("%").any()
+
+    if not has_pct_sign:
+        return series, False
+
+    def _to_decimal(val):
+        if not isinstance(val, str):
+            return val
+        val = val.strip()
+        if val.endswith("%"):
+            try:
+                return float(val[:-1]) / 100
+            except ValueError:
+                return np.nan
+        try:
+            return float(val)
+        except ValueError:
+            return np.nan
+
+    return series.apply(_to_decimal), True
+
+
+# ─────────────────────────────────────────────────────────────
+# High-cardinality / free-text detection
+# ─────────────────────────────────────────────────────────────
+
+def is_free_text_column(series: pd.Series) -> bool:
+    """
+    Detect if a column is free-text (address, description, notes)
+    rather than a true categorical.
+
+    Signals:
+      - Unique ratio > 0.7 (most values are unique)
+      - Average word count > 3
+      - Column name contains address/description/notes/comment keywords
+    """
+    non_null = series.dropna().astype(str)
+    if len(non_null) == 0:
+        return False
+    unique_ratio = non_null.nunique() / len(non_null)
+    avg_words    = non_null.str.split().str.len().mean()
+    return unique_ratio > 0.7 and avg_words > 3
