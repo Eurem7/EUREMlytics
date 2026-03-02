@@ -30,17 +30,23 @@ class SessionStore:
     # DataFrame storage (set on upload)
     # ──────────────────────────────────────
 
-    def save(self, session_id: str, df: pd.DataFrame) -> None:
+    def save(self, session_id: str, df: pd.DataFrame, filename: str = "") -> None:
         """Store a raw DataFrame under session_id."""
         with self._lock:
             self._evict_expired()
             if len(self._frames) >= MAX_SESSIONS:
                 self._evict_oldest()
             self._frames[session_id] = {
-                "df":     df,
-                "result": None,
-                "ts":     time.time(),
+                "df":       df,
+                "result":   None,
+                "filename": filename,
+                "ts":       time.time(),
             }
+
+    def get_filename(self, session_id: str) -> str:
+        with self._lock:
+            entry = self._frames.get(session_id)
+            return entry.get("filename", "") if entry else ""
 
     def get_df(self, session_id: str) -> Optional[pd.DataFrame]:
         """Retrieve the raw DataFrame. Returns None if not found or expired."""
