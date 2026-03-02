@@ -106,6 +106,42 @@ def clean_data(
 
     cleaned_df = result["cleaned_dataframe"]
 
+    # ── Auto-publish permanent report to Supabase ──
+    # Runs async in background so it never blocks the clean response
+    share_token = None
+    try:
+        import secrets, io as _io, httpx as _hx
+        from app.auth import get_current_user as _get_user
+        _user   = _get_user(request)
+        _token  = "rpt_" + secrets.token_urlsafe(8)
+        _csv    = _io.StringIO(); cleaned_df.to_csv(_csv, index=False); _csv_str = _csv.getvalue()
+        SUPABASE_URL         = "https://lisyiprowqxybfttenud.supabase.co"
+        SUPABASE_SERVICE_KEY = os.getenv("SUPABASE_SERVICE_KEY", "")
+        _r = _hx.post(
+            f"{SUPABASE_URL}/rest/v1/reports",
+            json={
+                "token":          _token,
+                "user_id":        _user.get("sub") if _user else None,
+                "filename":       session_store.get_filename(session_id) or result.get("filename", "cleaned_data.csv"),
+                "column_quality": result.get("column_quality_summary", []),
+                "audit_log":      result.get("audit_log", []),
+                "cleaned_shape":  list(cleaned_df.shape),
+                "eda_report":     result.get("eda_report", {}),
+                "csv_data":       _csv_str,
+            },
+            headers={
+                "apikey": SUPABASE_SERVICE_KEY,
+                "Authorization": f"Bearer {SUPABASE_SERVICE_KEY}",
+                "Content-Type": "application/json",
+                "Prefer": "return=minimal",
+            },
+            timeout=8.0,
+        )
+        if _r.status_code in (200, 201):
+            share_token = _token
+    except Exception:
+        pass  # Never block a clean result over a publish failure
+
     return CleaningResponse(
         session_id=session_id,
         raw_dataframe=raw_preview,
@@ -117,4 +153,5 @@ def clean_data(
         cleaned_shape=list(cleaned_df.shape),
         rows_removed=len(df) - len(cleaned_df),
         columns_dropped=len(df.columns) - len(cleaned_df.columns),
+        share_token=share_token,
     )
