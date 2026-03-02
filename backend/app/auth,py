@@ -1,5 +1,5 @@
 """
-app/auth.py
+
 ===========
 Supabase JWT verification for FastAPI.
 
