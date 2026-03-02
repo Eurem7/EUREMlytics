@@ -106,6 +106,34 @@ def clean_data(
 
     cleaned_df = result["cleaned_dataframe"]
 
+    # Sanitise cleaned data for JSON serialisation
+    # (replaces numpy types, NaN, Inf with JSON-safe equivalents)
+    import math as _math
+
+    def _safe_val(v):
+        if v is None:
+            return None
+        try:
+            import numpy as _np
+            if isinstance(v, _np.integer):   return int(v)
+            if isinstance(v, _np.floating):  return None if (_math.isnan(float(v)) or _math.isinf(float(v))) else float(v)
+            if isinstance(v, _np.bool_):     return bool(v)
+            if isinstance(v, float) and (_math.isnan(v) or _math.isinf(v)): return None
+        except Exception:
+            pass
+        try:
+            import pandas as _pd
+            if _pd.isna(v): return None
+        except Exception:
+            pass
+        return v
+
+    def _safe_row(row):
+        return {k: _safe_val(v) for k, v in row.items()}
+
+    safe_cleaned = [_safe_row(r) for r in cleaned_df.to_dict(orient="records")]
+    safe_raw     = [_safe_row(r) for r in raw_preview]
+
     # ── Auto-publish permanent report to Supabase ──
     # Runs async in background so it never blocks the clean response
     share_token = None
@@ -144,8 +172,8 @@ def clean_data(
 
     return CleaningResponse(
         session_id=session_id,
-        raw_dataframe=raw_preview,
-        cleaned_dataframe=cleaned_df.to_dict(orient="records"),
+        raw_dataframe=safe_raw,
+        cleaned_dataframe=safe_cleaned,
         audit_log=result["audit_log"],
         column_quality_summary=result["column_quality_summary"],
         eda_report=result["eda_report"],
