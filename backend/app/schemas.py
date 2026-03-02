@@ -19,5 +19,6 @@ class CleaningResponse(BaseModel):
     cleaned_shape:          list[int]
     rows_removed:           int
     columns_dropped:        int
+    share_token:            str | None = None  # permanent shareable report token
 
     model_config = {"arbitrary_types_allowed": True}
