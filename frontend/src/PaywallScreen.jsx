@@ -113,14 +113,19 @@ const PAYWALL_CSS = `
 
 const API_BASE = import.meta.env.VITE_API_URL || 'https://euremlytics-2.onrender.com'
 
-export default function PaywallScreen({ user, onBack, onSubscribed }) {
+export default function PaywallScreen({ user, plan = 'pro', onBack, onSubscribed }) {
   const [loading, setLoading] = useState(false)
   const [error, setError]     = useState('')
+  const isTeam  = plan === 'team'
+  const price   = isTeam ? '₦20,000' : '₦10,000'
+  const title   = isTeam ? 'Upgrade to Team' : 'Upgrade to Pro'
+  const subtitle = isTeam
+    ? 'Create a team workspace and collaborate with up to 5 members.'
+    : 'Your file exceeds the 500-row free limit. Upgrade to clean datasets of any size.'
 
   const handleUpgrade = async () => {
     setLoading(true); setError('')
     try {
-      // Get auth token
       const { supabase } = await import('./lib/supabase.js')
       const { data: { session } } = await supabase.auth.getSession()
       const token = session?.access_token
@@ -131,12 +136,11 @@ export default function PaywallScreen({ user, onBack, onSubscribed }) {
           'Content-Type': 'application/json',
           ...(token ? { 'Authorization': `Bearer ${token}` } : {}),
         },
+        body: JSON.stringify({ plan }),
       })
 
       const data = await res.json()
       if (!res.ok) throw new Error(data.detail || 'Payment initialization failed')
-
-      // Redirect to Paystack checkout
       window.location.href = data.authorization_url
 
     } catch(e) {
@@ -151,17 +155,14 @@ export default function PaywallScreen({ user, onBack, onSubscribed }) {
       <div className="paywall-page">
         <div className="paywall-card">
           <div className="paywall-head">
-            <div className="paywall-icon">⚡</div>
-            <div className="paywall-title">Upgrade to Pro</div>
-            <div className="paywall-subtitle">
-              Your file exceeds the 500-row free limit.<br/>
-              Upgrade to clean datasets of any size.
-            </div>
+            <div className="paywall-icon">{isTeam ? '👥' : '⚡'}</div>
+            <div className="paywall-title">{title}</div>
+            <div className="paywall-subtitle">{subtitle}</div>
           </div>
 
           <div className="paywall-body">
             <div className="paywall-price">
-              <div className="paywall-amount">₦10,000</div>
+              <div className="paywall-amount">{price}</div>
               <div className="paywall-period">per month · cancel anytime</div>
             </div>
 
@@ -187,7 +188,7 @@ export default function PaywallScreen({ user, onBack, onSubscribed }) {
             )}
 
             <button className="paywall-cta" onClick={handleUpgrade} disabled={loading}>
-              {loading ? 'Redirecting to Paystack…' : 'Pay ₦10,000 / month →'}
+              {loading ? 'Redirecting to Paystack…' : `Pay ${price} / month →`}
             </button>
 
             <button className="paywall-back" onClick={onBack}>
