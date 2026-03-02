@@ -44,6 +44,7 @@ router = APIRouter(prefix="/payments", tags=["payments"])
 PAYSTACK_SECRET_KEY = os.getenv("PAYSTACK_SECRET_KEY", "")
 PAYSTACK_BASE       = "https://api.paystack.co"
 PLAN_AMOUNT         = 1000000  # ₦10,000 in kobo
+TEAM_PLAN_AMOUNT    = 2000000  # ₦20,000 in kobo
 SUPABASE_URL        = "https://lisyiprowqxybfttenud.supabase.co"
 SUPABASE_ANON_KEY   = "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6Imxpc3lpcHJvd3F4eWJmdHRlbnVkIiwicm9sZSI6ImFub24iLCJpYXQiOjE3NzIxMzk3MzQsImV4cCI6MjA4NzcxNTczNH0.hwyd44Vjyi98x_F6aSCiUD-jn8IGLPo0TLLJvS5RAQ8"
 SUPABASE_SERVICE_KEY = os.getenv("SUPABASE_SERVICE_KEY", "")
@@ -90,8 +91,13 @@ async def _supabase_upsert_subscription(user_id: str, data: dict):
             )
 
 
+class InitPaymentRequest(BaseModel):
+    plan: str = "pro"  # "pro" | "team"
+
+from pydantic import BaseModel
+
 @router.post("/initialize")
-async def initialize_payment(request: Request):
+async def initialize_payment(body: InitPaymentRequest, request: Request):
     """Initialize a Paystack transaction for the current user."""
     user = await get_current_user(request)
     if not user:
@@ -100,18 +106,20 @@ async def initialize_payment(request: Request):
     email    = user.get("email", "")
     user_id  = user.get("sub", "")
     callback = "https://eure-mlytics.vercel.app?payment=verify"
+    plan     = body.plan if body.plan in ("pro", "team") else "pro"
+    amount   = TEAM_PLAN_AMOUNT if plan == "team" else PLAN_AMOUNT
 
     async with httpx.AsyncClient() as client:
         res = await client.post(
             f"{PAYSTACK_BASE}/transaction/initialize",
             json={
                 "email":        email,
-                "amount":       PLAN_AMOUNT,
+                "amount":       amount,
                 "currency":     "NGN",
                 "callback_url": callback,
                 "metadata": {
                     "user_id":     user_id,
-                    "plan":        "pro_monthly",
+                    "plan":        plan,
                     "cancel_action": "https://eure-mlytics.vercel.app",
                 },
                 "channels": ["card", "bank", "ussd", "bank_transfer"],
@@ -157,13 +165,15 @@ async def verify_payment(request: Request, reference: str = Query(...)):
     user_id    = user.get("sub", "")
     period_end = (datetime.now(timezone.utc) + timedelta(days=30)).isoformat()
 
+    plan = tx.get("metadata", {}).get("plan", "pro")
     await _supabase_upsert_subscription(user_id, {
         "status":              "active",
+        "plan":                plan,
         "current_period_end":  period_end,
         "paystack_customer_code": tx.get("customer", {}).get("customer_code", ""),
     })
 
-    return {"status": "active", "current_period_end": period_end}
+    return {"status": "active", "plan": plan, "current_period_end": period_end}
 
 
 @router.get("/subscription")
@@ -178,7 +188,7 @@ async def get_subscription(request: Request):
     async with httpx.AsyncClient() as client:
         res = await client.get(
             f"{SUPABASE_URL}/rest/v1/subscriptions",
-            params={"user_id": f"eq.{user_id}", "select": "status,current_period_end"},
+            params={"user_id": f"eq.{user_id}", "select": "status,plan,current_period_end,workspace_id"},
             headers={
                 "apikey": SUPABASE_SERVICE_KEY,
                 "Authorization": f"Bearer {SUPABASE_SERVICE_KEY}",
@@ -198,7 +208,7 @@ async def get_subscription(request: Request):
             await _supabase_upsert_subscription(user_id, {"status": "free"})
             return {"status": "free"}
 
-    return {"status": sub["status"], "current_period_end": sub.get("current_period_end")}
+    return {"status": sub["status"], "plan": sub.get("plan","pro"), "current_period_end": sub.get("current_period_end"), "workspace_id": sub.get("workspace_id")}
 
 
 @router.post("/webhook")
