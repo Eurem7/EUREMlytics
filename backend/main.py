@@ -12,7 +12,7 @@ import logging
 from fastapi import FastAPI
 from fastapi.middleware.cors import CORSMiddleware
 
-from app.routers import upload, clean, report, payments, feedback
+from app.routers import upload, clean, report, payments, feedback, workspace
 
 logger = logging.getLogger(__name__)
 
@@ -41,6 +41,7 @@ app.include_router(clean.router)
 app.include_router(report.router)
 app.include_router(payments.router)
 app.include_router(feedback.router)
+app.include_router(workspace.router)
 
 
 # ─────────────────────────────────────────────────────────────
