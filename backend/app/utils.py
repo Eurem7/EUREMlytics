@@ -620,3 +620,200 @@ def fuzzy_cluster_series(
         return series, {}
 
     return series.map(lambda x: remap.get(x, x) if pd.notna(x) else x), remap
+
+# ─────────────────────────────────────────────────────────────
+# Human-readable column explanations
+# Converts raw audit log + quality summary into plain English
+# ─────────────────────────────────────────────────────────────
+
+def explain_column(col_quality: dict, audit_log: list) -> dict:
+    """
+    Generate a human-readable explanation for a single column.
+
+    Returns:
+        {
+          "status":  "excellent" | "good" | "fair" | "poor",
+          "summary": "One-line plain English summary",
+          "issues":  ["list of specific issues found"],
+          "fixes":   ["list of fixes applied"],
+          "tip":     "Optional actionable suggestion"
+        }
+    """
+    col   = col_quality.get("column", "")
+    score = col_quality.get("quality_score", 1.0)
+    ctype = col_quality.get("type", "categorical")
+
+    # Filter audit entries for this column
+    col_audit = [a for a in audit_log if a.get("column") == col]
+
+    issues = []
+    fixes  = []
+    tip    = None
+
+    for entry in col_audit:
+        action = entry.get("action", "")
+
+        if action == "string_normalisation":
+            n = entry.get("placeholders_nulled", 0)
+            if n:
+                issues.append(f"{n} placeholder value{'s' if n>1 else ''} found (e.g. 'N/A', 'NULL', '-')")
+                fixes.append(f"Converted {n} placeholder{'s' if n>1 else ''} to empty (null)")
+
+        elif action == "unit_stripping":
+            n = entry.get("cells_affected", 0)
+            if n:
+                fixes.append(f"Stripped units/symbols from {n} cell{'s' if n>1 else ''}")
+
+        elif action == "category_harmonisation":
+            n = entry.get("cells_remapped", 0)
+            if n:
+                issues.append(f"{n} inconsistent capitalisation or abbreviation{'s' if n>1 else ''}")
+                fixes.append(f"Standardised {n} value{'s' if n>1 else ''} to consistent format")
+
+        elif action == "fuzzy_clustering":
+            n = entry.get("merges", 0)
+            remap = entry.get("remap", {})
+            if n:
+                examples = list(remap.items())[:2]
+                ex_str = ", ".join(f"'{k}' → '{v}'" for k, v in examples)
+                issues.append(f"{n} near-duplicate value{'s' if n>1 else ''} detected (e.g. {ex_str})")
+                fixes.append(f"Merged {n} typo variant{'s' if n>1 else ''} into canonical form")
+
+        elif action == "numeric_imputation":
+            n    = entry.get("cells_filled", 0)
+            pct  = entry.get("pct_filled", "")
+            meth = entry.get("method", "median")
+            val  = entry.get("fill_value", "")
+            if n:
+                issues.append(f"{n} missing value{'s' if n>1 else ''} ({pct})")
+                fixes.append(f"Filled {n} missing value{'s' if n>1 else ''} with {meth} ({val})")
+
+        elif action == "categorical_imputation":
+            n   = entry.get("cells_filled", 0)
+            val = entry.get("fill_value", "")
+            if n:
+                issues.append(f"{n} missing value{'s' if n>1 else ''}")
+                fixes.append(f"Filled {n} missing value{'s' if n>1 else ''} with most common: '{val}'")
+                if n > 3:
+                    tip = f"High number of missing values — consider reviewing source data for '{col}'"
+
+        elif action == "datetime_imputation":
+            n = entry.get("cells_filled", 0)
+            if n:
+                issues.append(f"{n} unparseable or missing date{'s' if n>1 else ''}")
+                fixes.append(f"Estimated {n} missing date{'s' if n>1 else ''} from column median")
+                tip = "Some dates could not be parsed — check original format for accuracy"
+
+        elif action == "outlier_detected":
+            n   = entry.get("count", 0)
+            pct = entry.get("pct", "")
+            if n:
+                issues.append(f"{n} statistical outlier{'s' if n>1 else ''} detected ({pct})")
+                tip = f"Outliers were flagged but not removed — review these values manually"
+
+        elif action == "outlier_capped":
+            n = entry.get("count", 0)
+            if n:
+                fixes.append(f"Capped {n} outlier{'s' if n>1 else ''} to valid range")
+
+        elif action == "percentage_normalisation":
+            fixes.append("Converted percentage values to decimal form (e.g. 45% → 0.45)")
+
+        elif action == "phone_normalisation":
+            n = entry.get("cells_affected", 0)
+            if n:
+                fixes.append(f"Normalised {n} phone number{'s' if n>1 else ''} to standard format")
+
+        elif action == "free_text_detected":
+            tip = "This column contains free-form text — it was preserved without imputation"
+
+        elif action == "low_variance":
+            tip = "This column has very low variation — it may not add analytical value"
+
+        elif action == "column_dropped":
+            reason = entry.get("reason", "")
+            issues.append(f"Column dropped: {reason.replace('_', ' ')}")
+
+    # High cardinality warning
+    if col_quality.get("high_cardinality_warning") and ctype == "categorical":
+        n_unique = col_quality.get("unique_values", 0)
+        if n_unique > 20 and not col_quality.get("free_text"):
+            tip = tip or f"{n_unique} unique values — verify this is truly categorical"
+
+    # Fuzzy merges in quality summary
+    fuzzy = col_quality.get("fuzzy_merges", 0)
+
+    # Build status
+    if score >= 0.95 and not issues:
+        status  = "excellent"
+        summary = f"No issues found — {ctype} column is clean and consistent"
+    elif score >= 0.85:
+        status  = "good"
+        n_fixes = len(fixes)
+        summary = f"{n_fixes} minor issue{'s' if n_fixes!=1 else ''} corrected — column is reliable"
+    elif score >= 0.70:
+        status  = "fair"
+        n_iss   = len(issues)
+        summary = f"{n_iss} issue{'s' if n_iss!=1 else ''} found and fixed — review recommended"
+    else:
+        status  = "poor"
+        n_iss   = len(issues)
+        summary = f"Significant data quality problems — {n_iss} issue{'s' if n_iss!=1 else ''} detected"
+
+    return {
+        "column":  col,
+        "type":    ctype,
+        "score":   round(score, 4),
+        "status":  status,
+        "summary": summary,
+        "issues":  issues,
+        "fixes":   fixes,
+        "tip":     tip,
+        "dropped": col_quality.get("dropped", False),
+    }
+
+
+def explain_report(column_quality: list, audit_log: list) -> dict:
+    """
+    Generate full explanation for all columns + an overall summary.
+    Returns a dict ready for JSON serialisation.
+    """
+    explanations = [explain_column(cq, audit_log) for cq in column_quality]
+
+    total      = len(explanations)
+    excellent  = sum(1 for e in explanations if e["status"] == "excellent")
+    good       = sum(1 for e in explanations if e["status"] == "good")
+    fair       = sum(1 for e in explanations if e["status"] == "fair")
+    poor       = sum(1 for e in explanations if e["status"] == "poor")
+    dropped    = sum(1 for e in explanations if e["dropped"])
+    total_fixes= sum(len(e["fixes"]) for e in explanations)
+    avg_score  = sum(e["score"] for e in explanations) / max(total, 1)
+
+    if avg_score >= 0.92:
+        overall_status = "excellent"
+        overall_msg    = "Your dataset is in excellent condition. All columns are clean and consistent."
+    elif avg_score >= 0.80:
+        overall_status = "good"
+        overall_msg    = f"Your dataset is in good shape. {total_fixes} issue{'s were' if total_fixes!=1 else ' was'} automatically corrected."
+    elif avg_score >= 0.65:
+        overall_status = "fair"
+        overall_msg    = f"Your dataset had moderate quality issues. {total_fixes} fix{'es were' if total_fixes!=1 else ' was'} applied — review flagged columns."
+    else:
+        overall_status = "poor"
+        overall_msg    = f"Your dataset had significant quality problems. Manual review of flagged columns is recommended."
+
+    return {
+        "overall": {
+            "status":       overall_status,
+            "message":      overall_msg,
+            "avg_score":    round(avg_score, 4),
+            "total_columns":total,
+            "excellent":    excellent,
+            "good":         good,
+            "fair":         fair,
+            "poor":         poor,
+            "dropped":      dropped,
+            "total_fixes":  total_fixes,
+        },
+        "columns": explanations,
+    }
