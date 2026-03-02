@@ -13,7 +13,6 @@ Team workspace management.
 """
 
 import os
-import resend
 from datetime import datetime, timezone
 
 import httpx
@@ -98,8 +97,8 @@ async def _sb_delete(path: str, params: dict):
 # ─── Email helper ─────────────────────────────────────────────
 
 def _send_invite_email(inviter_email: str, invitee_email: str, workspace_name: str):
-    """Send invitation email via Resend."""
     try:
+        import resend  # lazy import — won't crash startup if missing
         resend.api_key = RESEND_API_KEY
         accept_url = f"{FRONTEND_URL}?workspace_invite=accept&email={invitee_email}"
         resend.Emails.send({
