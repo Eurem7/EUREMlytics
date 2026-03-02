@@ -16,6 +16,7 @@ from datetime import datetime, timedelta, timezone
 import httpx
 from fastapi import APIRouter, HTTPException, Request, Query
 from fastapi.responses import JSONResponse
+from pydantic import BaseModel
 def get_token(request: Request):
     auth_header = request.headers.get("Authorization", "")
     if not auth_header.startswith("Bearer "):
@@ -93,8 +94,6 @@ async def _supabase_upsert_subscription(user_id: str, data: dict):
 
 class InitPaymentRequest(BaseModel):
     plan: str = "pro"  # "pro" | "team"
-
-from pydantic import BaseModel
 
 @router.post("/initialize")
 async def initialize_payment(body: InitPaymentRequest, request: Request):
