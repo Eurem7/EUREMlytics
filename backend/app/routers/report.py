@@ -1,49 +1,89 @@
 """
 routers/report.py
 =================
-Serves HTML report, CSV download, and PDF download.
+Serves HTML report, CSV download, PDF download,
+permanent shareable reports, and column explanations.
 """
 
 import io
 import csv
+import os
+import secrets
+import json
 
+import httpx
 from fastapi import APIRouter, HTTPException, Query, Request
-from fastapi.responses import HTMLResponse, StreamingResponse
+from fastapi.responses import HTMLResponse, StreamingResponse, JSONResponse
 from fastapi.templating import Jinja2Templates
 
 from app.engine import EnterpriseDataEngine
 from app.config import CleaningConfig
 from app.reporting import build_report_context
 from app.session import session_store
+from app.utils import explain_report
 
 router = APIRouter(prefix="/report", tags=["report"])
 templates = Jinja2Templates(directory="templates")
 
+SUPABASE_URL         = "https://lisyiprowqxybfttenud.supabase.co"
+SUPABASE_SERVICE_KEY = os.getenv("SUPABASE_SERVICE_KEY", "")
+FRONTEND_URL         = "https://eure-mlytics.vercel.app"
+
+
+# ─── Auth helper ─────────────────────────────────────────────
+
+async def _get_user(request: Request):
+    auth = request.headers.get("Authorization", "")
+    if not auth.startswith("Bearer "):
+        return None
+    token = auth.split(" ", 1)[1].strip()
+    async with httpx.AsyncClient() as client:
+        r = await client.get(
+            f"{SUPABASE_URL}/auth/v1/user",
+            headers={"Authorization": f"Bearer {token}", "apikey": SUPABASE_SERVICE_KEY},
+        )
+    if r.status_code != 200:
+        return None
+    u = r.json()
+    return {"id": u.get("id"), "email": u.get("email")}
+
+
+def _sb_headers():
+    return {
+        "apikey": SUPABASE_SERVICE_KEY,
+        "Authorization": f"Bearer {SUPABASE_SERVICE_KEY}",
+        "Content-Type": "application/json",
+    }
+
+
+# ─── Session result helper ───────────────────────────────────
 
 def _get_result(session_id: str | None) -> dict:
     if not session_id:
-        raise HTTPException(
-            status_code=400,
-            detail="session_id is required. Upload a file first via POST /upload/",
-        )
+        raise HTTPException(status_code=400, detail="session_id is required.")
     result = session_store.get_result(session_id)
     if result:
         return result
-
     df = session_store.get_df(session_id)
     if df is None:
-        raise HTTPException(
-            status_code=404,
-            detail=f"Session '{session_id}' not found or expired. Please upload again.",
-        )
+        raise HTTPException(status_code=404, detail=f"Session not found or expired.")
     try:
         result = EnterpriseDataEngine(df, CleaningConfig()).run()
     except Exception as e:
         raise HTTPException(status_code=500, detail=f"Engine error: {str(e)}")
-
     session_store.save_result(session_id, result)
     return result
 
+
+# ─── CSV helper ──────────────────────────────────────────────
+
+def _df_to_csv_string(cleaned_df) -> str:
+    buf = io.StringIO()
+    cleaned_df.to_csv(buf, index=False)
+    return buf.getvalue()
+
+
+# ─── Existing endpoints ──────────────────────────────────────
 
 @router.get("/html", response_class=HTMLResponse)
 def get_html_report(request: Request, session_id: str | None = Query(default=None)):
@@ -74,196 +114,211 @@ def download_csv(session_id: str | None = Query(default=None)):
     )
 
 
-@router.get("/pdf")
-def download_pdf(session_id: str | None = Query(default=None)):
-    from reportlab.lib.pagesizes import A4
-    from reportlab.lib.styles import getSampleStyleSheet, ParagraphStyle
-    from reportlab.lib.units import mm
-    from reportlab.lib import colors
-    from reportlab.platypus import (
-        SimpleDocTemplate, Paragraph, Spacer, Table, TableStyle, HRFlowable
+# ─── NEW: Column explanations ────────────────────────────────
+
+@router.get("/explain")
+def get_explanations(session_id: str | None = Query(default=None)):
+    """
+    Returns human-readable explanations for every column —
+    what was wrong, what was fixed, overall dataset health.
+    """
+    result = _get_result(session_id)
+    explanation = explain_report(
+        result.get("column_quality_summary", []),
+        result.get("audit_log", []),
     )
+    return JSONResponse(explanation)
 
-    result     = _get_result(session_id)
-    cleaned_df = result["cleaned_dataframe"]
-    quality    = result.get("column_quality_summary", [])
-    audit      = result.get("audit_log", [])
-    eda        = result.get("eda_report", {})
 
-    orig_shape    = eda.get("original_shape", [0, 0])
-    cleaned_shape = list(cleaned_df.shape)
+# ─── NEW: Publish permanent shareable report ─────────────────
 
-    buf = io.BytesIO()
-    doc = SimpleDocTemplate(
-        buf, pagesize=A4,
-        leftMargin=20*mm, rightMargin=20*mm,
-        topMargin=20*mm, bottomMargin=20*mm,
-    )
+@router.post("/publish")
+async def publish_report(request: Request, session_id: str | None = Query(default=None)):
+    """
+    Saves the clean result permanently to Supabase.
+    Returns a public token: GET /report/shared/{token}
+    Works for both authed and anonymous users.
+    """
+    result = _get_result(session_id)
+    user   = await _get_user(request)
 
-    # ── Colour palette ──
-    BLACK   = colors.HexColor("#0f0f0e")
-    GREY    = colors.HexColor("#8c8c86")
-    LGREY   = colors.HexColor("#efefec")
-    BORDER  = colors.HexColor("#d1d1cc")
-    GREEN   = colors.HexColor("#00875a")
-    WARN    = colors.HexColor("#b45309")
-    RED     = colors.HexColor("#c0392b")
-    ACCENT  = colors.HexColor("#1a6bff")
+    # Generate short unique token e.g. "rpt_a3f9k2b1"
+    token = "rpt_" + secrets.token_urlsafe(8)
 
-    styles = getSampleStyleSheet()
+    # Serialise the cleaned CSV
+    csv_data = _df_to_csv_string(result["cleaned_dataframe"])
 
-    def sty(name, **kw):
-        return ParagraphStyle(name, parent=styles["Normal"], **kw)
+    # Store to Supabase
+    payload = {
+        "token":          token,
+        "user_id":        user["id"] if user else None,
+        "filename":       result.get("filename", "cleaned_data.csv"),
+        "column_quality": result.get("column_quality_summary", []),
+        "audit_log":      result.get("audit_log", []),
+        "cleaned_shape":  list(result.get("cleaned_shape", [])),
+        "eda_report":     result.get("eda_report", {}),
+        "csv_data":       csv_data,
+    }
 
-    brand_sty    = sty("brand",    fontSize=14, fontName="Helvetica-Bold", textColor=BLACK, spaceAfter=2)
-    tagline_sty  = sty("tagline",  fontSize=8,  fontName="Helvetica",      textColor=GREY)
-    section_sty  = sty("section",  fontSize=7,  fontName="Helvetica-Bold", textColor=GREY,
-                        spaceBefore=14, spaceAfter=6, textTransform="uppercase", letterSpacing=1.5)
-    body_sty     = sty("body",     fontSize=8,  fontName="Helvetica",      textColor=BLACK)
-    mono_sty     = sty("mono",     fontSize=7,  fontName="Courier",        textColor=BLACK)
-    stat_val_sty = sty("statval",  fontSize=18, fontName="Helvetica-Bold", textColor=BLACK, leading=20)
-    stat_lbl_sty = sty("statlbl",  fontSize=6,  fontName="Helvetica-Bold", textColor=GREY,
-                        textTransform="uppercase", letterSpacing=1)
-
-    def score_color(s):
-        if s >= 0.85: return GREEN
-        if s >= 0.60: return WARN
-        return RED
-
-    story = []
-
-    # ── Header ──
-    story.append(Paragraph("Oxdemi.io", brand_sty))
-    story.append(Paragraph("Raw in. Clean out. — Quality Report", tagline_sty))
-    story.append(Spacer(1, 4*mm))
-    story.append(HRFlowable(width="100%", thickness=1, color=BORDER))
-    story.append(Spacer(1, 4*mm))
-
-    # ── Overview stats ──
-    story.append(Paragraph("Overview", section_sty))
-
-    n_good = len([q for q in quality if not q.get("dropped") and q.get("quality_score",0) >= 0.85])
-    n_warn = len([q for q in quality if not q.get("dropped") and 0.60 <= q.get("quality_score",0) < 0.85])
-    n_bad  = len([q for q in quality if not q.get("dropped") and q.get("quality_score",0) < 0.60])
-    n_drop = len([q for q in quality if q.get("dropped")])
-
-    stat_data = [
-        [Paragraph(str(orig_shape[0]), stat_val_sty),
-         Paragraph(str(cleaned_shape[0]), stat_val_sty),
-         Paragraph(str(cleaned_shape[1]), stat_val_sty),
-         Paragraph(str(n_good), stat_val_sty),
-         Paragraph(str(len(audit)), stat_val_sty)],
-        [Paragraph("Original Rows", stat_lbl_sty),
-         Paragraph("Clean Rows", stat_lbl_sty),
-         Paragraph("Columns", stat_lbl_sty),
-         Paragraph("High Quality", stat_lbl_sty),
-         Paragraph("Actions", stat_lbl_sty)],
-    ]
-    stat_tbl = Table(stat_data, colWidths=["20%","20%","20%","20%","20%"])
-    stat_tbl.setStyle(TableStyle([
-        ("BACKGROUND", (0,0), (-1,-1), colors.white),
-        ("BOX",        (0,0), (-1,-1), 0.5, BORDER),
-        ("INNERGRID",  (0,0), (-1,-1), 0.5, BORDER),
-        ("TOPPADDING", (0,0), (-1,-1), 8),
-        ("BOTTOMPADDING",(0,0),(-1,-1),8),
-        ("LEFTPADDING",(0,0),(-1,-1),10),
-        ("RIGHTPADDING",(0,0),(-1,-1),10),
-        ("ALIGN",      (0,0), (-1,-1), "LEFT"),
-        ("VALIGN",     (0,0), (-1,-1), "MIDDLE"),
-    ]))
-    story.append(stat_tbl)
-    story.append(Spacer(1, 4*mm))
-
-    # ── Column quality ──
-    story.append(Paragraph("Column Quality", section_sty))
-
-    col_header = [
-        Paragraph("Column",        sty("h", fontSize=6, fontName="Helvetica-Bold", textColor=GREY)),
-        Paragraph("Type",          sty("h", fontSize=6, fontName="Helvetica-Bold", textColor=GREY)),
-        Paragraph("Quality Score", sty("h", fontSize=6, fontName="Helvetica-Bold", textColor=GREY)),
-        Paragraph("Missing %",     sty("h", fontSize=6, fontName="Helvetica-Bold", textColor=GREY)),
-        Paragraph("Status",        sty("h", fontSize=6, fontName="Helvetica-Bold", textColor=GREY)),
-    ]
-    col_rows = [col_header]
-    for q in sorted(quality, key=lambda x: (-x.get("quality_score",0))):
-        score = q.get("quality_score", 0)
-        sc    = score_color(score)
-        status = "Dropped" if q.get("dropped") else ("Good" if score >= 0.85 else "Review" if score >= 0.60 else "Poor")
-        col_rows.append([
-            Paragraph(str(q.get("column","")),      mono_sty),
-            Paragraph(str(q.get("type","")),         body_sty),
-            Paragraph(f"{score:.2f}",                sty("s", fontSize=8, fontName="Helvetica-Bold", textColor=sc)),
-            Paragraph(f"{q.get('missing_pct','—')}{'%' if q.get('missing_pct') is not None else ''}", body_sty),
-            Paragraph(status,                        sty("st", fontSize=7, fontName="Helvetica-Bold",
-                                                         textColor=GREEN if status=="Good" else WARN if status=="Review" else RED)),
-        ])
-
-    col_tbl = Table(col_rows, colWidths=["32%","12%","16%","14%","12%"])
-    col_tbl.setStyle(TableStyle([
-        ("BACKGROUND",    (0,0), (-1,0),  LGREY),
-        ("ROWBACKGROUNDS",(0,1),(-1,-1),  [colors.white, colors.HexColor("#fafaf8")]),
-        ("BOX",           (0,0), (-1,-1), 0.5, BORDER),
-        ("INNERGRID",     (0,0), (-1,-1), 0.25, BORDER),
-        ("TOPPADDING",    (0,0), (-1,-1), 5),
-        ("BOTTOMPADDING", (0,0), (-1,-1), 5),
-        ("LEFTPADDING",   (0,0), (-1,-1), 8),
-        ("RIGHTPADDING",  (0,0), (-1,-1), 8),
-        ("VALIGN",        (0,0), (-1,-1), "MIDDLE"),
-    ]))
-    story.append(col_tbl)
-    story.append(Spacer(1, 4*mm))
-
-    # ── Audit log ──
-    story.append(Paragraph("Audit Log", section_sty))
-
-    audit_header = [
-        Paragraph("Time",   sty("h", fontSize=6, fontName="Helvetica-Bold", textColor=GREY)),
-        Paragraph("Action", sty("h", fontSize=6, fontName="Helvetica-Bold", textColor=GREY)),
-        Paragraph("Column", sty("h", fontSize=6, fontName="Helvetica-Bold", textColor=GREY)),
-        Paragraph("Detail", sty("h", fontSize=6, fontName="Helvetica-Bold", textColor=GREY)),
-    ]
-    audit_rows = [audit_header]
-    for entry in audit[:50]:  # cap at 50 rows for PDF
-        ts     = str(entry.get("timestamp",""))[-8:-3] or "—"
-        action = str(entry.get("action","")).replace("_"," ")
-        col    = str(entry.get("column","—"))
-        detail = ", ".join(
-            f"{k}={v}" for k,v in entry.items()
-            if k not in ["action","column","timestamp"]
+    async with httpx.AsyncClient() as client:
+        r = await client.post(
+            f"{SUPABASE_URL}/rest/v1/reports",
+            json=payload,
+            headers={**_sb_headers(), "Prefer": "return=minimal"},
         )
-        audit_rows.append([
-            Paragraph(ts,     mono_sty),
-            Paragraph(action, body_sty),
-            Paragraph(col,    mono_sty),
-            Paragraph(detail[:80], sty("d", fontSize=6, fontName="Helvetica", textColor=GREY)),
-        ])
 
-    audit_tbl = Table(audit_rows, colWidths=["10%","22%","22%","46%"])
-    audit_tbl.setStyle(TableStyle([
-        ("BACKGROUND",    (0,0), (-1,0),  LGREY),
-        ("ROWBACKGROUNDS",(0,1),(-1,-1),  [colors.white, colors.HexColor("#fafaf8")]),
-        ("BOX",           (0,0), (-1,-1), 0.5, BORDER),
-        ("INNERGRID",     (0,0), (-1,-1), 0.25, BORDER),
-        ("TOPPADDING",    (0,0), (-1,-1), 4),
-        ("BOTTOMPADDING", (0,0), (-1,-1), 4),
-        ("LEFTPADDING",   (0,0), (-1,-1), 6),
-        ("RIGHTPADDING",  (0,0), (-1,-1), 6),
-        ("VALIGN",        (0,0), (-1,-1), "TOP"),
-    ]))
-    story.append(audit_tbl)
-    story.append(Spacer(1, 6*mm))
+    if r.status_code not in (200, 201):
+        raise HTTPException(status_code=500, detail="Failed to save report.")
 
-    # ── Footer ──
-    story.append(HRFlowable(width="100%", thickness=0.5, color=BORDER))
-    story.append(Spacer(1, 2*mm))
-    story.append(Paragraph("Generated by Oxdemi.io · Raw in. Clean out.", tagline_sty))
+    share_url = f"{FRONTEND_URL}/report/{token}"
+    return {"token": token, "url": share_url}
 
-    doc.build(story)
-    buf.seek(0)
 
-    filename = f"oxdemi_report_{session_id[:8]}.pdf"
+# ─── NEW: View shared report ─────────────────────────────────
+
+@router.get("/shared/{token}", response_class=HTMLResponse)
+async def view_shared_report(request: Request, token: str):
+    """
+    Public endpoint — renders a report page from a saved token.
+    No authentication required.
+    """
+    async with httpx.AsyncClient() as client:
+        r = await client.get(
+            f"{SUPABASE_URL}/rest/v1/reports",
+            params={"token": f"eq.{token}", "select": "*"},
+            headers=_sb_headers(),
+        )
+
+    rows = r.json()
+    if not rows:
+        raise HTTPException(status_code=404, detail="Report not found or link has expired.")
+
+    row = rows[0]
+
+    # Rebuild a result-like dict for the template
+    result = {
+        "filename":             row.get("filename", ""),
+        "column_quality_summary": row.get("column_quality", []),
+        "audit_log":            row.get("audit_log", []),
+        "cleaned_shape":        tuple(row.get("cleaned_shape", [0, 0])),
+        "eda_report":           row.get("eda_report", {}),
+        "shared":               True,
+        "token":                token,
+        "created_at":           row.get("created_at", ""),
+    }
+
+    context = build_report_context(request, result)
+    context["shared"]     = True
+    context["token"]      = token
+    context["share_url"]  = f"{FRONTEND_URL}/report/{token}"
+    context["csv_url"]    = f"/report/shared/{token}/csv"
+    return templates.TemplateResponse("report.html", context)
+
+
+# ─── NEW: Re-download CSV from saved report ──────────────────
+
+@router.get("/shared/{token}/csv")
+async def download_shared_csv(token: str):
+    """
+    Re-download the cleaned CSV from a permanently saved report.
+    No session required — works days or weeks after the original clean.
+    """
+    async with httpx.AsyncClient() as client:
+        r = await client.get(
+            f"{SUPABASE_URL}/rest/v1/reports",
+            params={"token": f"eq.{token}", "select": "filename,csv_data"},
+            headers=_sb_headers(),
+        )
+
+    rows = r.json()
+    if not rows or not rows[0].get("csv_data"):
+        raise HTTPException(status_code=404, detail="Report not found.")
+
+    row      = rows[0]
+    filename = row.get("filename", "cleaned_data.csv")
+    # Ensure .csv extension
+    if not filename.endswith(".csv"):
+        filename = filename.rsplit(".", 1)[0] + "_cleaned.csv"
+
     return StreamingResponse(
-        buf,
-        media_type="application/pdf",
+        iter([row["csv_data"]]),
+        media_type="text/csv",
         headers={"Content-Disposition": f'attachment; filename="{filename}"'},
     )
+
+
+
+# ─── NEW: Get shared report as JSON (for frontend rendering) ─
+
+@router.get("/shared/{token}/data")
+async def get_shared_report_data(token: str):
+    """
+    Returns the saved report as JSON — used by the frontend
+    SharedReportScreen to render the report without the backend template.
+    """
+    async with httpx.AsyncClient() as client:
+        r = await client.get(
+            f"{SUPABASE_URL}/rest/v1/reports",
+            params={"token": f"eq.{token}", "select": "token,filename,created_at,cleaned_shape,column_quality,audit_log,eda_report"},
+            headers=_sb_headers(),
+        )
+
+    rows = r.json()
+    if not rows:
+        raise HTTPException(status_code=404, detail="Report not found.")
+
+    row = rows[0]
+    return {
+        "token":          row["token"],
+        "filename":       row.get("filename", ""),
+        "created_at":     row.get("created_at", ""),
+        "cleaned_shape":  row.get("cleaned_shape", [0, 0]),
+        "column_quality": row.get("column_quality", []),
+        "audit_log":      row.get("audit_log", []),
+        "eda_report":     row.get("eda_report", {}),
+    }
+
+# ─── NEW: List user's saved reports ──────────────────────────
+
+@router.get("/my")
+async def list_my_reports(request: Request):
+    """
+    Returns all reports saved by the current user.
+    Used to populate the history tab with re-download links.
+    """
+    user = await _get_user(request)
+    if not user:
+        raise HTTPException(status_code=401, detail="Authentication required.")
+
+    async with httpx.AsyncClient() as client:
+        r = await client.get(
+            f"{SUPABASE_URL}/rest/v1/reports",
+            params={
+                "user_id": f"eq.{user['id']}",
+                "select":  "token,filename,created_at,cleaned_shape,column_quality",
+                "order":   "created_at.desc",
+                "limit":   "50",
+            },
+            headers=_sb_headers(),
+        )
+
+    rows = r.json()
+
+    # Enrich with avg_score and share url
+    enriched = []
+    for row in rows:
+        quality    = row.get("column_quality", []) or []
+        avg_score  = sum(c.get("quality_score", 0) for c in quality) / max(len(quality), 1)
+        shape      = row.get("cleaned_shape", [0, 0])
+        enriched.append({
+            "token":      row["token"],
+            "filename":   row["filename"],
+            "created_at": row["created_at"],
+            "rows":       shape[0] if shape else 0,
+            "columns":    shape[1] if len(shape) > 1 else 0,
+            "avg_score":  round(avg_score, 4),
+            "share_url":  f"{FRONTEND_URL}/report/{row['token']}",
+            "csv_url":    f"/report/shared/{row['token']}/csv",
+        })
+
+    return {"reports": enriched}
