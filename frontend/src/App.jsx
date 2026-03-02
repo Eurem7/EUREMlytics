@@ -3198,6 +3198,7 @@ export default function App() {
   const [uploadData, setUploadData] = useState(null)
   const [result, setResult]         = useState(null)
   const [user, setUser]             = useState(null)
+  const [upgradePlan, setUpgradePlan] = useState('pro')
   const [authReason, setAuthReason] = useState(null)
   const [authChecked, setAuthChecked]   = useState(false)
   const [legalModal, setLegalModal]     = useState(null)
@@ -3302,9 +3303,22 @@ export default function App() {
     setFeedbackDone(false)
   }
 
-  const handleAuth = (authUser) => {
+  const handleAuth = async (authUser) => {
     setUser(authUser)
     setAuthReason(null)
+
+    // Auto-accept any pending workspace invitation for this email
+    try {
+      const { data: { session } } = await supabase.auth.getSession()
+      const token = session?.access_token
+      if (token) {
+        fetch(`${API_BASE}/workspace/accept`, {
+          method: 'POST',
+          headers: { 'Authorization': `Bearer ${token}`, 'Content-Type': 'application/json' }
+        }).catch(() => {}) // silent — not critical
+      }
+    } catch {}
+
     // If they uploaded before signing in, continue to clean
     if (uploadData) {
       if (subscription !== 'active' && uploadData.rows > FREE_ROW_LIMIT) {
@@ -3367,6 +3381,7 @@ export default function App() {
           {screen === 'paywall' && (
             <PaywallScreen
               user={user}
+              plan={upgradePlan}
               onBack={() => setScreen('upload')}
               onSubscribed={() => { setSubscription('active'); setScreen('clean') }}
             />
@@ -3375,22 +3390,23 @@ export default function App() {
             <UserDashboard
               user={user}
               onBack={() => setScreen(prevScreen)}
-              onUpgrade={() => setScreen('paywall')}
+              onUpgrade={(plan) => { setUpgradePlan(plan || 'pro'); setScreen('paywall') }}
             />
           )}
           {screen === 'clean' && uploadData && (
-            <CleanScreen uploadData={uploadData} onCleaned={r => {
+            <CleanScreen uploadData={uploadData} onCleaned={async r => {
               setResult(r)
               setScreen('dashboard')
-              // Send email summary if user is signed in
               if (user?.email) {
-                const quality = r.column_quality_summary || []
-                const avgScore = quality.length
-                  ? quality.reduce((s, q) => s + q.quality_score, 0) / quality.length
-                  : 0
-                fetch('https://euremlytics-2.onrender.com/feedback/email-summary', {
-                  method: 'POST',
-                  headers: { 'Content-Type': 'application/json' },
+                const quality  = r.column_quality_summary || []
+                const avgScore = quality.length ? quality.reduce((s, q) => s + q.quality_score, 0) / quality.length : 0
+                const { data: { session } } = await supabase.auth.getSession()
+                const token = session?.access_token
+                const headers = { 'Content-Type': 'application/json', ...(token ? { 'Authorization': `Bearer ${token}` } : {}) }
+
+                // Email summary
+                fetch(`${API_BASE}/feedback/email-summary`, {
+                  method: 'POST', headers,
                   body: JSON.stringify({
                     email:      user.email,
                     filename:   uploadData.filename,
@@ -3401,7 +3417,21 @@ export default function App() {
                     actions:    (r.audit_log || []).length,
                     session_id: uploadData.session_id,
                   })
-                }).catch(() => {}) // silent fail
+                }).catch(() => {})
+
+                // Save to file history
+                fetch(`${API_BASE}/workspace/history`, {
+                  method: 'POST', headers,
+                  body: JSON.stringify({
+                    session_id:    uploadData.session_id,
+                    filename:      uploadData.filename,
+                    original_rows: uploadData.rows,
+                    cleaned_rows:  (r.cleaned_shape || [uploadData.rows])[0],
+                    columns:       (r.cleaned_shape || [0, uploadData.columns])[1],
+                    avg_score:     parseFloat(avgScore.toFixed(4)),
+                    actions_taken: (r.audit_log || []).length,
+                  })
+                }).catch(() => {})
               }
             }} />
           )}
