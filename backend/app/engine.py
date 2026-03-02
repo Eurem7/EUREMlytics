@@ -3,7 +3,15 @@ EnterpriseDataEngine
 ====================
 Production-grade data cleaning pipeline.
 
-
+Pipeline order (intentional):
+  1. Column header normalisation
+  2. String normalisation  (object cols only)
+  3. Unit stripping        (removes "sq.m.", "kg", "%" etc.)
+  4. Category harmonisation (abbreviation/variant mapping)
+  5. Duplicate removal
+  6. Per-column type inference → imputation → outlier handling
+  7. Constant & near-constant column flagging
+  8. EDA report generation
 
 Design principles:
   - Every mutation is logged with before/after counts where meaningful
@@ -18,6 +26,7 @@ from __future__ import annotations
 import re
 import unicodedata
 import logging
+import math
 from datetime import datetime
 from typing import Any
 
@@ -41,6 +50,34 @@ from .utils import (
 )
 
 logger = logging.getLogger(__name__)
+
+
+def _json_safe(obj: Any) -> Any:
+    """
+    Recursively convert an object to JSON-serialisable types.
+    Handles numpy scalars, NaN/Inf, pandas NA, and nested dicts/lists.
+    """
+    if obj is None:
+        return None
+    if isinstance(obj, bool):
+        return obj
+    if isinstance(obj, (np.bool_,)):
+        return bool(obj)
+    if isinstance(obj, (np.integer,)):
+        return int(obj)
+    if isinstance(obj, (np.floating, float)):
+        if math.isnan(obj) or math.isinf(obj):
+            return None
+        return float(obj)
+    if isinstance(obj, np.ndarray):
+        return [_json_safe(v) for v in obj.tolist()]
+    if isinstance(obj, dict):
+        return {str(k): _json_safe(v) for k, v in obj.items()}
+    if isinstance(obj, (list, tuple)):
+        return [_json_safe(v) for v in obj]
+    if pd.isna(obj) if not isinstance(obj, (dict, list, np.ndarray)) else False:
+        return None
+    return obj
 
 
 # ─────────────────────────────────────────────
@@ -894,8 +931,7 @@ class EnterpriseDataEngine:
 
         return {
             "cleaned_dataframe":      self.df,
-            "audit_log":              self.audit_log,
-            "column_quality_summary": self.column_quality,
-            "eda_report":             eda,
+            "audit_log":              _json_safe(self.audit_log),
+            "column_quality_summary": _json_safe(self.column_quality),
+            "eda_report":             _json_safe(eda),
         }
-
