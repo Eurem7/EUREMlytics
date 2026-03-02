@@ -1,8 +1,7 @@
 """
 routers/report.py
 =================
-Serves HTML report, CSV download, PDF download,
-permanent shareable reports, and column explanations.
+
 """
 
 import io
@@ -322,3 +321,4 @@ async def list_my_reports(request: Request):
         })
 
     return {"reports": enriched}
+
