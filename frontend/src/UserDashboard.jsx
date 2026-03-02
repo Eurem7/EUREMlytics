@@ -107,14 +107,14 @@ export default function UserDashboard({ user, onBack, onUpgrade }) {
         const [subRes, wsRes, histRes] = await Promise.all([
           authFetch(`${API}/payments/subscription`),
           authFetch(`${API}/workspace/mine`),
-          authFetch(`${API}/workspace/history`),
+          authFetch(`${API}/report/my`),
         ])
         const subData  = await subRes.json()
         const wsData   = await wsRes.json()
         const histData = await histRes.json()
         setSub(subData)
         setWorkspace(wsData.workspace || null)
-        setHistory(histData.history || [])
+        setHistory(histData.reports || [])
         if (wsData.workspace) {
           const memRes  = await authFetch(`${API}/workspace/members`)
           const memData = await memRes.json()
@@ -376,16 +376,36 @@ export default function UserDashboard({ user, onBack, onUpgrade }) {
                 {history.length === 0
                   ? <div className="udash-empty">No files cleaned yet.<br /><span style={{fontSize:'0.68rem'}}>Each file you clean will appear here.</span></div>
                   : history.map(h => (
-                    <div className="history-row" key={h.id}>
+                    <div className="history-row" key={h.token}>
                       <div style={{flex:1,minWidth:0}}>
                         <div className="history-filename" style={{whiteSpace:'nowrap',overflow:'hidden',textOverflow:'ellipsis'}}>{h.filename}</div>
                         <div className="history-meta">
-                          {h.cleaned_rows?.toLocaleString()} rows · {h.columns} cols · {h.actions_taken} actions · {new Date(h.created_at).toLocaleDateString('en-NG',{day:'numeric',month:'short'})}
+                          {h.rows?.toLocaleString()} rows · {h.columns} cols ·{' '}
+                          {new Date(h.created_at).toLocaleDateString('en-NG',{day:'numeric',month:'short',year:'numeric'})}
                         </div>
                       </div>
-                      <span className={`history-score ${scoreClass(h.avg_score)}`}>
-                        {Math.round(h.avg_score * 100)}%
-                      </span>
+                      <div style={{display:'flex',alignItems:'center',gap:'0.5rem',flexShrink:0}}>
+                        <span className={`history-score ${scoreClass(h.avg_score)}`}>
+                          {Math.round(h.avg_score * 100)}%
+                        </span>
+                        <a
+                          href={`${API}/report/shared/${h.token}/csv`}
+                          download
+                          title="Re-download cleaned CSV"
+                          style={{display:'flex',alignItems:'center',justifyContent:'center',width:'26px',height:'26px',borderRadius:'6px',border:'1px solid var(--border2)',background:'var(--bg)',color:'var(--text3)',textDecoration:'none',fontSize:'0.7rem',transition:'all 0.15s'}}
+                          onMouseOver={e=>{e.target.style.borderColor='var(--text3)';e.target.style.color='var(--text)'}}
+                          onMouseOut={e=>{e.target.style.borderColor='var(--border2)';e.target.style.color='var(--text3)'}}
+                        >↓</a>
+                        <a
+                          href={h.share_url}
+                          target="_blank"
+                          rel="noopener noreferrer"
+                          title="View shareable report"
+                          style={{display:'flex',alignItems:'center',justifyContent:'center',width:'26px',height:'26px',borderRadius:'6px',border:'1px solid var(--border2)',background:'var(--bg)',color:'var(--text3)',textDecoration:'none',fontSize:'0.7rem',transition:'all 0.15s'}}
+                          onMouseOver={e=>{e.target.style.borderColor='var(--text3)';e.target.style.color='var(--text)'}}
+                          onMouseOut={e=>{e.target.style.borderColor='var(--border2)';e.target.style.color='var(--text3)'}}
+                        >↗</a>
+                      </div>
                     </div>
                   ))
                 }
