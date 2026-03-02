@@ -2204,9 +2204,11 @@ function CleanScreen({ uploadData, onCleaned }) {
 // ─────────────────────────────────────────────────────────────
 // Dashboard
 // ─────────────────────────────────────────────────────────────
-function Dashboard({ result, sessionId, onViewReport, user, feedbackDone, onNeedFeedback }) {
-  const [tab, setTab] = useState('overview')
-  const [showFeedback, setShowFeedback] = useState(false)
+function Dashboard({ result, sessionId, shareToken, onViewReport, user, feedbackDone, onNeedFeedback }) {
+  const [tab, setTab]             = useState('overview')
+  const [explanations, setExpls]  = useState(null)
+  const [explLoading, setExplLoading] = useState(false)
+  const [copied, setCopied]       = useState(false)
 
   const quality    = result.column_quality_summary || []
   const audit      = result.audit_log || []
@@ -2224,6 +2226,39 @@ function Dashboard({ result, sessionId, onViewReport, user, feedbackDone, onNeed
   // Columns for each preview table
   const rawCols   = rawRows.length   ? Object.keys(rawRows[0])   : []
   const cleanCols = cleanRows.length ? Object.keys(cleanRows[0]) : []
+
+  const BACKEND = import.meta.env.VITE_API_URL || 'https://euremlytics-2.onrender.com'
+
+  const loadExplanations = async () => {
+    if (explanations) return
+    setExplLoading(true)
+    try {
+      const res  = await fetch(`${BACKEND}/report/explain?session_id=${sessionId}`)
+      const data = await res.json()
+      setExpls(data)
+    } catch { setExpls({ error: true }) }
+    finally  { setExplLoading(false) }
+  }
+
+  const handleTabChange = (t) => {
+    setTab(t)
+    if (t === 'explain') loadExplanations()
+  }
+
+  const handleShare = async () => {
+    if (!shareToken) return
+    const url = `${window.location.origin}/report/${shareToken}`
+    try {
+      await navigator.clipboard.writeText(url)
+      setCopied(true)
+      setTimeout(() => setCopied(false), 2500)
+    } catch {
+      window.prompt('Copy this link:', url)
+    }
+  }
+
+  const statusIcon  = s => s === 'excellent' ? '✓' : s === 'good' ? '✓' : s === 'fair' ? '⚠' : '✕'
+  const statusColor = s => s === 'excellent' ? 'var(--green)' : s === 'good' ? 'var(--green)' : s === 'fair' ? '#f59e0b' : 'var(--red)'
 
   return (
     <div className="page anim-fade-up">
@@ -2245,6 +2280,16 @@ function Dashboard({ result, sessionId, onViewReport, user, feedbackDone, onNeed
           <button className="btn btn-ghost btn-sm" onClick={() => feedbackDone ? triggerDownload(csvDownloadUrl(sessionId)) : onNeedFeedback()}>↓ CSV</button>
           <button className="btn btn-ghost btn-sm" onClick={() => feedbackDone ? triggerDownload(pdfDownloadUrl(sessionId)) : onNeedFeedback()}>↓ PDF</button>
           <SheetsExportButton sessionId={sessionId} feedbackDone={feedbackDone} onNeedFeedback={onNeedFeedback} />
+          {shareToken && (
+            <button
+              className="btn btn-ghost btn-sm"
+              onClick={handleShare}
+              title="Copy shareable report link"
+              style={copied ? {color:'var(--green)',borderColor:'var(--green)'} : {}}
+            >
+              {copied ? '✓ Copied!' : '🔗 Share'}
+            </button>
+          )}
           <button className="btn btn-primary" onClick={onViewReport}>View Report →</button>
         </div>
       </div>
@@ -2299,9 +2344,12 @@ function Dashboard({ result, sessionId, onViewReport, user, feedbackDone, onNeed
 
       {/* Tab bar */}
       <div className="dash-tabs">
-        <button className={`dash-tab${tab==='overview'?' active':''}`} onClick={() => setTab('overview')}>Overview</button>
-        <button className={`dash-tab${tab==='preview'?' active':''}`} onClick={() => setTab('preview')}>Data Preview</button>
-        <button className={`dash-tab${tab==='audit'?' active':''}`} onClick={() => setTab('audit')}>Audit Log</button>
+        <button className={`dash-tab${tab==='overview'?' active':''}`} onClick={() => handleTabChange('overview')}>Overview</button>
+        <button className={`dash-tab${tab==='explain'?' active':''}`} onClick={() => handleTabChange('explain')}>
+          Explanations {nWarn + nBad > 0 && <span style={{marginLeft:'4px',background:'#f59e0b',color:'#fff',borderRadius:'99px',padding:'0 5px',fontSize:'0.6rem'}}>{nWarn+nBad}</span>}
+        </button>
+        <button className={`dash-tab${tab==='preview'?' active':''}`} onClick={() => handleTabChange('preview')}>Data Preview</button>
+        <button className={`dash-tab${tab==='audit'?' active':''}`} onClick={() => handleTabChange('audit')}>Audit Log</button>
       </div>
 
       {/* ── OVERVIEW TAB ── */}
@@ -2474,6 +2522,249 @@ function Dashboard({ result, sessionId, onViewReport, user, feedbackDone, onNeed
         </div>
       )}
 
+      {/* ── EXPLANATIONS TAB ── */}
+      {tab === 'explain' && (
+        <div>
+          {explLoading && (
+            <div style={{textAlign:'center',padding:'3rem',color:'var(--text3)',fontSize:'0.8rem'}}>
+              Analysing columns…
+            </div>
+          )}
+          {!explLoading && explanations && !explanations.error && (
+            <>
+              {/* Overall summary banner */}
+              <div style={{
+                background: explanations.overall.status === 'excellent' ? 'var(--green-bg)'
+                          : explanations.overall.status === 'good'      ? 'var(--green-bg)'
+                          : explanations.overall.status === 'fair'      ? 'rgba(245,158,11,0.08)'
+                          : 'var(--red-bg)',
+                border: `1px solid ${
+                          explanations.overall.status === 'excellent' ? 'rgba(0,135,90,0.2)'
+                        : explanations.overall.status === 'good'      ? 'rgba(0,135,90,0.2)'
+                        : explanations.overall.status === 'fair'      ? 'rgba(245,158,11,0.2)'
+                        : 'rgba(192,57,43,0.2)'}`,
+                borderRadius:'var(--r2)', padding:'1.25rem 1.5rem',
+                marginBottom:'1rem', display:'flex', alignItems:'center', gap:'1rem',
+              }}>
+                <div style={{fontSize:'1.8rem'}}>
+                  {explanations.overall.status === 'excellent' ? '🟢'
+                  : explanations.overall.status === 'good'     ? '🟢'
+                  : explanations.overall.status === 'fair'     ? '🟡' : '🔴'}
+                </div>
+                <div>
+                  <div style={{fontWeight:700, fontSize:'0.9rem', marginBottom:'0.25rem'}}>
+                    {explanations.overall.message}
+                  </div>
+                  <div style={{fontSize:'0.72rem', color:'var(--text3)', fontFamily:'var(--mono)'}}>
+                    {explanations.overall.excellent} excellent · {explanations.overall.good} good · {explanations.overall.fair} fair · {explanations.overall.poor} poor · {explanations.overall.total_fixes} total fixes
+                  </div>
+                </div>
+              </div>
+
+              {/* Per-column cards */}
+              <div style={{display:'flex', flexDirection:'column', gap:'0.65rem'}}>
+                {explanations.columns.map(col => (
+                  <div key={col.column} style={{
+                    background:'var(--surface)', border:'1px solid var(--border2)',
+                    borderRadius:'var(--r2)', padding:'1rem 1.25rem',
+                    borderLeft: `3px solid ${statusColor(col.status)}`,
+                  }}>
+                    <div style={{display:'flex', alignItems:'flex-start', justifyContent:'space-between', gap:'1rem', marginBottom: col.issues.length || col.fixes.length || col.tip ? '0.75rem' : 0}}>
+                      <div>
+                        <div style={{display:'flex', alignItems:'center', gap:'0.5rem'}}>
+                          <span style={{fontFamily:'var(--mono)', fontWeight:700, fontSize:'0.82rem'}}>{col.column}</span>
+                          <span style={{fontSize:'0.6rem', background:'var(--bg2)', color:'var(--text3)', padding:'0.1rem 0.45rem', borderRadius:'99px'}}>{col.type}</span>
+                          {col.dropped && <span style={{fontSize:'0.6rem', background:'var(--red-bg)', color:'var(--red)', padding:'0.1rem 0.45rem', borderRadius:'99px'}}>dropped</span>}
+                        </div>
+                        <div style={{fontSize:'0.75rem', color:'var(--text2)', marginTop:'0.25rem'}}>{col.summary}</div>
+                      </div>
+                      <div style={{
+                        display:'flex', alignItems:'center', gap:'0.35rem',
+                        fontFamily:'var(--mono)', fontSize:'0.75rem', fontWeight:700,
+                        color: statusColor(col.status), flexShrink:0,
+                      }}>
+                        <span>{statusIcon(col.status)}</span>
+                        <span>{Math.round(col.score * 100)}%</span>
+                      </div>
+                    </div>
+
+                    {col.issues.length > 0 && (
+                      <div style={{marginBottom:'0.5rem'}}>
+                        {col.issues.map((iss, i) => (
+                          <div key={i} style={{display:'flex', gap:'0.5rem', fontSize:'0.72rem', color:'var(--text3)', marginBottom:'0.2rem'}}>
+                            <span style={{color:'#f59e0b', flexShrink:0}}>⚠</span>
+                            <span>{iss}</span>
+                          </div>
+                        ))}
+                      </div>
+                    )}
+
+                    {col.fixes.length > 0 && (
+                      <div style={{marginBottom: col.tip ? '0.5rem' : 0}}>
+                        {col.fixes.map((fix, i) => (
+                          <div key={i} style={{display:'flex', gap:'0.5rem', fontSize:'0.72rem', color:'var(--text3)', marginBottom:'0.2rem'}}>
+                            <span style={{color:'var(--green)', flexShrink:0}}>✓</span>
+                            <span>{fix}</span>
+                          </div>
+                        ))}
+                      </div>
+                    )}
+
+                    {col.tip && (
+                      <div style={{
+                        display:'flex', gap:'0.5rem', fontSize:'0.7rem',
+                        color:'var(--text3)', marginTop:'0.4rem',
+                        padding:'0.5rem 0.65rem', background:'var(--bg)',
+                        borderRadius:'6px', border:'1px solid var(--border)',
+                      }}>
+                        <span style={{flexShrink:0}}>💡</span>
+                        <span>{col.tip}</span>
+                      </div>
+                    )}
+                  </div>
+                ))}
+              </div>
+            </>
+          )}
+          {!explLoading && explanations?.error && (
+            <div style={{textAlign:'center', padding:'2rem', color:'var(--text3)', fontSize:'0.8rem'}}>
+              Could not load explanations. Try refreshing.
+            </div>
+          )}
+        </div>
+      )}
+
+    </div>
+  )
+}
+
+// ─────────────────────────────────────────────────────────────
+// Shared Report — public view from permanent token
+// ─────────────────────────────────────────────────────────────
+function SharedReportScreen({ token }) {
+  const BACKEND = import.meta.env.VITE_API_URL || 'https://euremlytics-2.onrender.com'
+  const [data, setData]       = useState(null)
+  const [loading, setLoading] = useState(true)
+  const [error, setError]     = useState(null)
+  const [copied, setCopied]   = useState(false)
+
+  useEffect(() => {
+    const load = async () => {
+      try {
+        const [repRes, explRes] = await Promise.all([
+          fetch(`${BACKEND}/report/shared/${token}`),
+          fetch(`${BACKEND}/report/explain?session_id=shared_${token}`).catch(() => null),
+        ])
+        // Shared report comes back as HTML from the backend template
+        // Instead fetch the JSON data directly via a dedicated endpoint
+        const res = await fetch(`${BACKEND}/report/shared/${token}/data`)
+        if (!res.ok) throw new Error('Report not found')
+        const json = await res.json()
+        setData(json)
+      } catch (e) {
+        setError(e.message)
+      } finally {
+        setLoading(false)
+      }
+    }
+    load()
+  }, [token])
+
+  const handleCopyLink = async () => {
+    try {
+      await navigator.clipboard.writeText(window.location.href)
+      setCopied(true); setTimeout(() => setCopied(false), 2000)
+    } catch { window.prompt('Share this link:', window.location.href) }
+  }
+
+  if (loading) return (
+    <div style={{display:'flex',alignItems:'center',justifyContent:'center',height:'100vh',color:'var(--text3)',fontSize:'0.85rem'}}>
+      Loading report…
+    </div>
+  )
+
+  if (error || !data) return (
+    <div style={{display:'flex',flexDirection:'column',alignItems:'center',justifyContent:'center',height:'100vh',gap:'1rem',textAlign:'center'}}>
+      <div style={{fontSize:'2.5rem'}}>🔍</div>
+      <div style={{fontWeight:700}}>Report not found</div>
+      <div style={{fontSize:'0.8rem',color:'var(--text3)',maxWidth:'280px',lineHeight:1.6}}>This report link may have expired or been removed.</div>
+      <a href="/" style={{fontSize:'0.78rem',color:'var(--accent)'}}>← Go to Oxdemi</a>
+    </div>
+  )
+
+  const quality   = data.column_quality || []
+  const avgScore  = quality.length ? (quality.reduce((s,q) => s + (q.quality_score||0), 0) / quality.length) : 0
+  const shape     = data.cleaned_shape || [0,0]
+  const scoreClass = s => s >= 0.85 ? 'good' : s >= 0.6 ? 'warn' : 'bad'
+
+  return (
+    <div style={{minHeight:'100vh',background:'var(--bg)',padding:'2rem 1.5rem',maxWidth:'820px',margin:'0 auto'}}>
+      {/* Header */}
+      <div style={{display:'flex',alignItems:'center',justifyContent:'space-between',marginBottom:'2rem',flexWrap:'wrap',gap:'1rem'}}>
+        <div>
+          <div style={{fontSize:'0.62rem',fontFamily:'var(--mono)',fontWeight:700,color:'var(--accent)',textTransform:'uppercase',letterSpacing:'0.12em',marginBottom:'0.4rem'}}>
+            Shared Report · Oxdemi
+          </div>
+          <div style={{fontSize:'1.4rem',fontWeight:700,letterSpacing:'-0.03em'}}>{data.filename}</div>
+          <div style={{fontSize:'0.72rem',color:'var(--text3)',marginTop:'0.25rem'}}>
+            {shape[0]?.toLocaleString()} rows · {shape[1]} columns ·{' '}
+            {data.created_at ? new Date(data.created_at).toLocaleDateString('en-NG',{day:'numeric',month:'long',year:'numeric'}) : ''}
+          </div>
+        </div>
+        <div style={{display:'flex',gap:'0.5rem',flexWrap:'wrap'}}>
+          <a
+            href={`${BACKEND}/report/shared/${token}/csv`}
+            download
+            style={{display:'inline-flex',alignItems:'center',gap:'0.35rem',height:'34px',padding:'0 1rem',borderRadius:'var(--r)',border:'1px solid var(--border2)',background:'var(--surface)',color:'var(--text2)',fontSize:'0.75rem',fontWeight:600,textDecoration:'none',transition:'all 0.15s'}}
+          >↓ Download CSV</a>
+          <button
+            onClick={handleCopyLink}
+            style={{height:'34px',padding:'0 1rem',borderRadius:'var(--r)',border:'1px solid var(--border2)',background:'var(--surface)',color: copied ? 'var(--green)' : 'var(--text2)',fontSize:'0.75rem',fontWeight:600,cursor:'pointer',transition:'all 0.15s'}}
+          >{copied ? '✓ Copied!' : '🔗 Copy Link'}</button>
+        </div>
+      </div>
+
+      {/* Avg score banner */}
+      <div style={{background:'var(--surface)',border:'1px solid var(--border2)',borderRadius:'var(--r2)',padding:'1.25rem 1.5rem',marginBottom:'1.25rem',display:'flex',alignItems:'center',gap:'1.5rem'}}>
+        <div style={{textAlign:'center'}}>
+          <div style={{fontFamily:'var(--mono)',fontSize:'2rem',fontWeight:700,color:'var(--accent)'}}>{Math.round(avgScore*100)}%</div>
+          <div style={{fontSize:'0.62rem',color:'var(--text3)',textTransform:'uppercase',letterSpacing:'0.08em',marginTop:'0.2rem'}}>Avg Quality</div>
+        </div>
+        <div style={{flex:1}}>
+          <div style={{fontWeight:600,marginBottom:'0.25rem',fontSize:'0.85rem'}}>Dataset Quality Summary</div>
+          <div style={{fontSize:'0.72rem',color:'var(--text3)',fontFamily:'var(--mono)'}}>
+            {quality.filter(q=>!q.dropped && q.quality_score>=0.85).length} excellent ·{' '}
+            {quality.filter(q=>!q.dropped && q.quality_score>=0.6 && q.quality_score<0.85).length} review ·{' '}
+            {quality.filter(q=>!q.dropped && q.quality_score<0.6).length} poor ·{' '}
+            {quality.filter(q=>q.dropped).length} dropped
+          </div>
+        </div>
+      </div>
+
+      {/* Column quality table */}
+      <div style={{background:'var(--surface)',border:'1px solid var(--border2)',borderRadius:'var(--r2)',overflow:'hidden'}}>
+        <div style={{padding:'0.85rem 1.25rem',borderBottom:'1px solid var(--border)',fontSize:'0.65rem',fontWeight:700,textTransform:'uppercase',letterSpacing:'0.1em',color:'var(--text3)'}}>
+          Column Quality
+        </div>
+        {quality.map(col => (
+          <div key={col.column} style={{display:'flex',alignItems:'center',justifyContent:'space-between',padding:'0.8rem 1.25rem',borderBottom:'1px solid var(--border)',gap:'1rem'}}>
+            <div style={{flex:1,minWidth:0}}>
+              <div style={{fontFamily:'var(--mono)',fontWeight:600,fontSize:'0.78rem',whiteSpace:'nowrap',overflow:'hidden',textOverflow:'ellipsis'}}>{col.column}</div>
+              <div style={{fontSize:'0.65rem',color:'var(--text3)',marginTop:'0.15rem'}}>{col.type}{col.dropped ? ' · dropped' : col.missing_pct ? ` · ${col.missing_pct}% missing` : ''}</div>
+            </div>
+            <div style={{display:'flex',alignItems:'center',gap:'0.75rem',flexShrink:0}}>
+              <div style={{width:'80px',height:'5px',borderRadius:'99px',background:'var(--border2)',overflow:'hidden'}}>
+                <div style={{height:'100%',width:`${Math.round((col.quality_score||0)*100)}%`,borderRadius:'99px',background: (col.quality_score||0)>=0.85?'var(--green)':(col.quality_score||0)>=0.6?'#f59e0b':'var(--red)'}} />
+              </div>
+              <span style={{fontFamily:'var(--mono)',fontSize:'0.75rem',fontWeight:700,minWidth:'36px',textAlign:'right'}}>{Math.round((col.quality_score||0)*100)}%</span>
+            </div>
+          </div>
+        ))}
+      </div>
+
+      <div style={{textAlign:'center',marginTop:'1.5rem',fontSize:'0.68rem',color:'var(--text3)'}}>
+        Generated by <a href="/" style={{color:'var(--accent)',textDecoration:'none',fontWeight:600}}>Oxdemi</a> · Raw in. Clean out.
+      </div>
     </div>
   )
 }
@@ -3195,10 +3486,22 @@ const FREE_ROW_LIMIT = 500
 
 export default function App() {
   const [screen, setScreen]         = useState('landing')
+  const [sharedReportToken, setSharedReportToken] = useState(null)
+
+  // Detect /report/{token} URL on initial load
+  useEffect(() => {
+    const path = window.location.pathname
+    const match = path.match(/^\/report\/(rpt_[A-Za-z0-9_-]+)$/)
+    if (match) {
+      setSharedReportToken(match[1])
+      setScreen('shared_report')
+    }
+  }, [])
   const [uploadData, setUploadData] = useState(null)
   const [result, setResult]         = useState(null)
   const [user, setUser]             = useState(null)
   const [upgradePlan, setUpgradePlan] = useState('pro')
+  const [shareToken, setShareToken] = useState(null)
   const [authReason, setAuthReason] = useState(null)
   const [authChecked, setAuthChecked]   = useState(false)
   const [legalModal, setLegalModal]     = useState(null)
@@ -3333,6 +3636,11 @@ export default function App() {
 
   if (!authChecked) return null // wait for session check
 
+  // Shared report — render without auth, no navbar chrome needed
+  if (screen === 'shared_report' && sharedReportToken) {
+    return <SharedReportScreen token={sharedReportToken} />
+  }
+
   const stepIndex = { upload:0, clean:1, dashboard:2, report:2 }[screen] ?? 0
 
   return (
@@ -3396,6 +3704,7 @@ export default function App() {
           {screen === 'clean' && uploadData && (
             <CleanScreen uploadData={uploadData} onCleaned={async r => {
               setResult(r)
+              setShareToken(r.share_token || null)
               setScreen('dashboard')
               if (user?.email) {
                 const quality  = r.column_quality_summary || []
@@ -3448,6 +3757,7 @@ export default function App() {
             <Dashboard
               result={result}
               sessionId={uploadData.session_id}
+              shareToken={shareToken}
               onViewReport={() => setScreen('report')}
               user={user}
               feedbackDone={feedbackDone}
