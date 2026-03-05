@@ -8,6 +8,7 @@ then stores the raw DataFrame in the session store for downstream
 
 import io
 import hashlib
+import time
 import pandas as pd
 
 from fastapi import APIRouter, File, UploadFile, HTTPException, Request
@@ -162,8 +163,8 @@ async def upload_file(file: UploadFile = File(...)):
     if df.shape[1] == 0:
         raise HTTPException(status_code=400, detail="File has no columns.")
 
-    session_id = hashlib.sha256(contents).hexdigest()[:16]
-    session_store.save(session_id, df)
+    session_id = hashlib.sha256(contents + str(time.time()).encode()).hexdigest()[:16]
+    session_store.save(session_id, df, filename=filename)
 
     return JSONResponse(content={
         "session_id":   session_id,
@@ -221,9 +222,8 @@ async def upload_from_sheets(request: Request):
     if df.shape[1] == 0:
         raise HTTPException(status_code=400, detail="Sheet has no columns.")
 
-    import hashlib
-    session_id = hashlib.sha256(contents).hexdigest()[:16]
-    session_store.save(session_id, df)
+    session_id = hashlib.sha256(contents + str(time.time()).encode()).hexdigest()[:16]
+    session_store.save(session_id, df, filename=filename)
 
     return JSONResponse(content={
         "session_id":   session_id,
