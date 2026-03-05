@@ -328,7 +328,7 @@ async def list_my_reports(request: Request):
                     "rows":       shape[0] if len(shape) > 0 else 0,
                     "columns":    shape[1] if len(shape) > 1 else 0,
                     "avg_score":  round(avg_score, 4),
-                    "share_url":  f"{FRONTEND_URL}/report/{row['token']}",
+                    "share_url":  f"{FRONTEND_URL}/#/report/{row['token']}",
                     "csv_url":    f"/report/shared/{row['token']}/csv",
                 })
             except Exception:
