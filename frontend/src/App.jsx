@@ -2195,7 +2195,21 @@ function CleanScreen({ uploadData, onCleaned }) {
           </div>
         )}
 
-        {error && <div className="error-box"><span>⚠</span><span>{error}</span></div>}
+        {error && (
+          <div style={{marginTop:'1.5rem'}}>
+            <div className="error-box"><span>⚠</span><span>{error}</span></div>
+            {(error.toLowerCase().includes('session') || error.toLowerCase().includes('re-upload') || error.toLowerCase().includes('server')) && (
+              <div style={{textAlign:'center', marginTop:'1rem'}}>
+                <button className="btn btn-primary" onClick={() => window.location.reload()}>
+                  ↑ Re-upload file
+                </button>
+                <div style={{fontSize:'0.68rem', color:'var(--text3)', marginTop:'0.5rem', lineHeight:1.5}}>
+                  Sessions last 1 hour. If the server restarted, re-uploading your file will fix this.
+                </div>
+              </div>
+            )}
+          </div>
+        )}
       </div>
     </div>
   )
