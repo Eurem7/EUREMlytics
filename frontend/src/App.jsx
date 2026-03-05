@@ -3494,38 +3494,32 @@ function AppFooter({ onPrivacy, onTerms, onAbout }) {
 const FREE_ROW_LIMIT = 500
 
 export default function App() {
-  const [screen, setScreen]         = useState('landing')
-  const [sharedReportToken, setSharedReportToken] = useState(null)
-
-  // Detect /report/{token} URL on initial load — supports both path and hash routing
-  useEffect(() => {
-    const checkRoute = () => {
-      // Hash routing: /#/report/rpt_xxx
-      const hash = window.location.hash
-      const hashMatch = hash.match(/^#\/report\/(rpt_[A-Za-z0-9_-]+)$/)
-      if (hashMatch) {
-        setSharedReportToken(hashMatch[1])
-        setScreen('shared_report')
-        return
-      }
-      // Path routing: /report/rpt_xxx (requires Vercel rewrite)
-      const path = window.location.pathname
-      const pathMatch = path.match(/^\/report\/(rpt_[A-Za-z0-9_-]+)$/)
-      if (pathMatch) {
-        setSharedReportToken(pathMatch[1])
-        setScreen('shared_report')
-      }
-    }
-    checkRoute()
-  }, [])
+  // Detect shared report route immediately — before any effects run
+  // Uses a function initialiser so it only runs once and wins over all effects
+  const [screen, setScreen] = useState(() => {
+    const hash = window.location.hash
+    if (hash.match(/^#\/report\/rpt_[A-Za-z0-9_-]+$/)) return 'shared_report'
+    const path = window.location.pathname
+    if (path.match(/^\/report\/rpt_[A-Za-z0-9_-]+$/)) return 'shared_report'
+    return 'landing'
+  })
+  const [sharedReportToken, setSharedReportToken] = useState(() => {
+    const hash = window.location.hash
+    const hm = hash.match(/^#\/report\/(rpt_[A-Za-z0-9_-]+)$/)
+    if (hm) return hm[1]
+    const path = window.location.pathname
+    const pm = path.match(/^\/report\/(rpt_[A-Za-z0-9_-]+)$/)
+    return pm ? pm[1] : null
+  })
   const [uploadData, setUploadData] = useState(null)
   const [result, setResult]         = useState(null)
 
   // Clear any stale session on every fresh page load
+  // But never overwrite a shared report route
   useEffect(() => {
     setUploadData(null)
     setResult(null)
-    setScreen('landing')
+    setScreen(prev => prev === 'shared_report' ? 'shared_report' : 'landing')
   }, [])
   const [user, setUser]             = useState(null)
   const [upgradePlan, setUpgradePlan] = useState('pro')
@@ -3605,6 +3599,8 @@ export default function App() {
       else { setSubscription('free'); setSubChecked(true) }
       if (session?.user && screen === 'auth') setScreen('upload')
       if (session?.user && screen === 'landing') setScreen('upload')
+      // Never redirect away from a shared report link
+      // (shared_report is handled before auth check)
     })
     return () => authSub.unsubscribe()
   }, [])
@@ -3662,12 +3658,12 @@ export default function App() {
     }
   }
 
-  if (!authChecked) return null // wait for session check
-
-  // Shared report — render without auth, no navbar chrome needed
+  // Shared report renders immediately — no auth needed, no wait
   if (screen === 'shared_report' && sharedReportToken) {
     return <SharedReportScreen token={sharedReportToken} />
   }
+
+  if (!authChecked) return null // wait for session check
 
   const stepIndex = { upload:0, clean:1, dashboard:2, report:2 }[screen] ?? 0
 
