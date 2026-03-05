@@ -1,7 +1,8 @@
 """
 routers/report.py
 =================
-
+Serves HTML report, CSV download, PDF download,
+permanent shareable reports, and column explanations.
 """
 
 import io
@@ -40,11 +41,13 @@ async def _get_user(request: Request):
         r = await client.get(
             f"{SUPABASE_URL}/auth/v1/user",
             headers={"Authorization": f"Bearer {token}", "apikey": SUPABASE_SERVICE_KEY},
+            timeout=8.0,
         )
     if r.status_code != 200:
         return None
     u = r.json()
-    return {"id": u.get("id"), "email": u.get("email")}
+    uid = u.get("id")
+    return {"id": uid, "sub": uid, "email": u.get("email")}
 
 
 def _sb_headers():
@@ -289,36 +292,49 @@ async def list_my_reports(request: Request):
     if not user:
         raise HTTPException(status_code=401, detail="Authentication required.")
 
-    async with httpx.AsyncClient() as client:
-        r = await client.get(
-            f"{SUPABASE_URL}/rest/v1/reports",
-            params={
-                "user_id": f"eq.{user['id']}",
-                "select":  "token,filename,created_at,cleaned_shape,column_quality",
-                "order":   "created_at.desc",
-                "limit":   "50",
-            },
-            headers=_sb_headers(),
-        )
+    user_id = user.get("id") or user.get("sub", "")
+    if not user_id:
+        return {"reports": []}
 
-    rows = r.json()
+    try:
+        async with httpx.AsyncClient() as client:
+            r = await client.get(
+                f"{SUPABASE_URL}/rest/v1/reports",
+                params={
+                    "user_id": f"eq.{user_id}",
+                    "select":  "token,filename,created_at,cleaned_shape,column_quality",
+                    "order":   "created_at.desc",
+                    "limit":   "50",
+                },
+                headers=_sb_headers(),
+                timeout=8.0,
+            )
 
-    # Enrich with avg_score and share url
-    enriched = []
-    for row in rows:
-        quality    = row.get("column_quality", []) or []
-        avg_score  = sum(c.get("quality_score", 0) for c in quality) / max(len(quality), 1)
-        shape      = row.get("cleaned_shape", [0, 0])
-        enriched.append({
-            "token":      row["token"],
-            "filename":   row["filename"],
-            "created_at": row["created_at"],
-            "rows":       shape[0] if shape else 0,
-            "columns":    shape[1] if len(shape) > 1 else 0,
-            "avg_score":  round(avg_score, 4),
-            "share_url":  f"{FRONTEND_URL}/report/{row['token']}",
-            "csv_url":    f"/report/shared/{row['token']}/csv",
-        })
+        # Supabase returns an error dict if the table doesn't exist
+        rows = r.json()
+        if not isinstance(rows, list):
+            return {"reports": []}
 
-    return {"reports": enriched}
+        enriched = []
+        for row in rows:
+            try:
+                quality   = row.get("column_quality", []) or []
+                avg_score = sum(c.get("quality_score", 0) for c in quality) / max(len(quality), 1)
+                shape     = row.get("cleaned_shape", [0, 0]) or [0, 0]
+                enriched.append({
+                    "token":      row["token"],
+                    "filename":   row.get("filename", "cleaned_data.csv"),
+                    "created_at": row.get("created_at", ""),
+                    "rows":       shape[0] if len(shape) > 0 else 0,
+                    "columns":    shape[1] if len(shape) > 1 else 0,
+                    "avg_score":  round(avg_score, 4),
+                    "share_url":  f"{FRONTEND_URL}/report/{row['token']}",
+                    "csv_url":    f"/report/shared/{row['token']}/csv",
+                })
+            except Exception:
+                continue
 
+        return {"reports": enriched}
+
+    except Exception:
+        return {"reports": []}
