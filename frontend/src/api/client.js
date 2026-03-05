@@ -12,8 +12,7 @@ async function request(path, options = {}) {
   try {
     res = await fetch(`${BASE}${path}`, { ...options, headers })
   } catch (networkErr) {
-    // fetch() itself threw — server unreachable, CORS block, or network down
-    // Give a user-friendly message instead of raw browser error
+   
     throw new Error(
       'Could not reach the server. This usually means your session expired — please re-upload your file.'
     )
@@ -60,4 +59,5 @@ export async function cleanData(sessionId, configOverrides = {}) {
 export const csvDownloadUrl  = (sid) => `${BASE}/report/csv?session_id=${sid}`
 export const pdfDownloadUrl  = (sid) => `${BASE}/report/pdf?session_id=${sid}`
 export const reportHtmlUrl   = (sid) => `${BASE}/report/html?session_id=${sid}`
+
 
