@@ -45,18 +45,20 @@ app.include_router(workspace.router)
 
 
 # ─────────────────────────────────────────────────────────────
-# Self keep-alive — pings /health every 10 minutes from inside
-# the process itself so Render never spins down.
-# Uses a daemon thread so it never blocks shutdown.
+# Self keep-alive — pings /health every 4 minutes.
+# Render free tier sleeps after 15min of inactivity.
+# Self-pings don't count as "external" traffic on Render,
+# so also set up UptimeRobot (free) to ping /health every 5min.
+# Together these guarantee the server never sleeps.
 # ─────────────────────────────────────────────────────────────
 
-SELF_URL = "https://euremlytics-2.onrender.com/health"
-PING_INTERVAL = 600  # 10 minutes in seconds
+SELF_URL      = "https://euremlytics-2.onrender.com/health"
+PING_INTERVAL = 4 * 60  # 4 minutes — well under the 15min sleep threshold
 
 
 def _keep_alive_loop():
-    # Wait 30s after startup before first ping so the server is ready
-    time.sleep(30)
+    # Wait 20s after startup before first ping so the server is ready
+    time.sleep(20)
     while True:
         try:
             with urllib.request.urlopen(SELF_URL, timeout=10) as resp:
