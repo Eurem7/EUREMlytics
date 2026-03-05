@@ -1,7 +1,6 @@
 import { useState, useCallback, useRef, useEffect } from 'react'
 import { uploadFile, cleanData, csvDownloadUrl, pdfDownloadUrl, reportHtmlUrl } from './api/client.js'
 
-// Trigger download via hidden iframe — works cross-origin
 function triggerDownload(url) {
   const iframe = document.createElement('iframe')
   iframe.style.display = 'none'
@@ -3806,3 +3805,4 @@ export default function App() {
     </>
   )
 }
+
