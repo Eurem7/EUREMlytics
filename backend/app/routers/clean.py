@@ -21,22 +21,26 @@ router = APIRouter(prefix="/clean", tags=["clean"])
 
 SUPABASE_URL         = "https://lisyiprowqxybfttenud.supabase.co"
 SUPABASE_SERVICE_KEY = os.getenv("SUPABASE_SERVICE_KEY", "")
-SUPABASE_JWT_SECRET  = os.getenv("SUPABASE_JWT_SECRET", "")
 
 
 def _get_user(request: Request):
-    """Extract user from Bearer JWT — no external module needed."""
+    """Extract user by calling Supabase auth API — no JWT secret needed."""
     auth = request.headers.get("Authorization", "")
     if not auth.startswith("Bearer "):
         return None
     token = auth.split(" ", 1)[1].strip()
     try:
-        from jose import jwt, JWTError
-        payload = jwt.decode(token, SUPABASE_JWT_SECRET, algorithms=["HS256"],
-                             options={"verify_aud": False})
-        return payload
+        r = httpx.get(
+            f"{SUPABASE_URL}/auth/v1/user",
+            headers={"Authorization": f"Bearer {token}", "apikey": SUPABASE_SERVICE_KEY},
+            timeout=8.0,
+        )
+        if r.status_code == 200:
+            u = r.json()
+            return {"sub": u.get("id"), "email": u.get("email")}
     except Exception:
-        return None
+        pass
+    return None
 
 
 def _get_dataframe(session_id: str | None) -> pd.DataFrame:
