@@ -48,7 +48,6 @@ def clean_data(
     # ── Row limit enforcement ──
     FREE_ROW_LIMIT = 500
     if len(df) > FREE_ROW_LIMIT:
-        # Check subscription via Supabase
         import httpx as _httpx
         from app.auth import get_current_user as _get_user
         user = _get_user(request)
@@ -140,7 +139,7 @@ def clean_data(
     try:
         import secrets, io as _io, httpx as _hx
         from app.auth import get_current_user as _get_user
-        _user   = _get_user(request)
+        _user = _get_user(request)
         _token  = "rpt_" + secrets.token_urlsafe(8)
         _csv    = _io.StringIO(); cleaned_df.to_csv(_csv, index=False); _csv_str = _csv.getvalue()
         SUPABASE_URL         = "https://lisyiprowqxybfttenud.supabase.co"
