@@ -2261,7 +2261,7 @@ function Dashboard({ result, sessionId, shareToken, onViewReport, user, feedback
 
   const handleShare = async () => {
     if (!shareToken) return
-    const url = `${window.location.origin}/report/${shareToken}`
+    const url = `${window.location.origin}/#/report/${shareToken}`
     try {
       await navigator.clipboard.writeText(url)
       setCopied(true)
@@ -2665,12 +2665,6 @@ function SharedReportScreen({ token }) {
   useEffect(() => {
     const load = async () => {
       try {
-        const [repRes, explRes] = await Promise.all([
-          fetch(`${BACKEND}/report/shared/${token}`),
-          fetch(`${BACKEND}/report/explain?session_id=shared_${token}`).catch(() => null),
-        ])
-        // Shared report comes back as HTML from the backend template
-        // Instead fetch the JSON data directly via a dedicated endpoint
         const res = await fetch(`${BACKEND}/report/shared/${token}/data`)
         if (!res.ok) throw new Error('Report not found')
         const json = await res.json()
@@ -2685,10 +2679,11 @@ function SharedReportScreen({ token }) {
   }, [token])
 
   const handleCopyLink = async () => {
+    const url = `${window.location.origin}/#/report/${token}`
     try {
-      await navigator.clipboard.writeText(window.location.href)
+      await navigator.clipboard.writeText(url)
       setCopied(true); setTimeout(() => setCopied(false), 2000)
-    } catch { window.prompt('Share this link:', window.location.href) }
+    } catch { window.prompt('Share this link:', url) }
   }
 
   if (loading) return (
@@ -3502,14 +3497,26 @@ export default function App() {
   const [screen, setScreen]         = useState('landing')
   const [sharedReportToken, setSharedReportToken] = useState(null)
 
-  // Detect /report/{token} URL on initial load
+  // Detect /report/{token} URL on initial load — supports both path and hash routing
   useEffect(() => {
-    const path = window.location.pathname
-    const match = path.match(/^\/report\/(rpt_[A-Za-z0-9_-]+)$/)
-    if (match) {
-      setSharedReportToken(match[1])
-      setScreen('shared_report')
+    const checkRoute = () => {
+      // Hash routing: /#/report/rpt_xxx
+      const hash = window.location.hash
+      const hashMatch = hash.match(/^#\/report\/(rpt_[A-Za-z0-9_-]+)$/)
+      if (hashMatch) {
+        setSharedReportToken(hashMatch[1])
+        setScreen('shared_report')
+        return
+      }
+      // Path routing: /report/rpt_xxx (requires Vercel rewrite)
+      const path = window.location.pathname
+      const pathMatch = path.match(/^\/report\/(rpt_[A-Za-z0-9_-]+)$/)
+      if (pathMatch) {
+        setSharedReportToken(pathMatch[1])
+        setScreen('shared_report')
+      }
     }
+    checkRoute()
   }, [])
   const [uploadData, setUploadData] = useState(null)
   const [result, setResult]         = useState(null)
