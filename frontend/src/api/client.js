@@ -7,16 +7,40 @@ import { getAuthToken } from '../lib/supabase.js'
 const BASE = import.meta.env.VITE_API_URL || 'https://euremlytics-2.onrender.com'
 
 async function request(path, options = {}) {
-  // Attach auth token if user is signed in
   const token = await getAuthToken()
   const headers = { ...(options.headers || {}) }
   if (token) headers['Authorization'] = `Bearer ${token}`
 
-  const res = await fetch(`${BASE}${path}`, { ...options, headers })
-  if (!res.ok) {
-    const err = await res.json().catch(() => ({ detail: res.statusText }))
-    throw new Error(err.detail || `Request failed: ${res.status}`)
+  let res
+  try {
+    res = await fetch(`${BASE}${path}`, { ...options, headers })
+  } catch (networkErr) {
+    // fetch() itself threw — server unreachable, CORS block, or network down
+    // Give a user-friendly message instead of raw browser error
+    throw new Error(
+      'Could not reach the server. This usually means your session expired — please re-upload your file.'
+    )
   }
+
+  if (!res.ok) {
+    let detail = `Request failed (${res.status})`
+    try {
+      const body = await res.json()
+      detail = body.detail || detail
+    } catch {}
+
+    // 404 on /clean/ = session expired (server restarted)
+    if (res.status === 404 && path.includes('/clean/')) {
+      throw new Error('Session expired — please re-upload your file to start a new session.')
+    }
+    // 403 = row limit / subscription needed
+    if (res.status === 403) {
+      throw new Error(detail)
+    }
+
+    throw new Error(detail)
+  }
+
   return res
 }
 
