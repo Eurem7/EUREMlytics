@@ -199,15 +199,26 @@ async def get_subscription(request: Request):
         return {"status": "free"}
 
     sub = rows[0]
-    # Check if subscription has expired
-    if sub["status"] == "active" and sub.get("current_period_end"):
-        period_end = datetime.fromisoformat(sub["current_period_end"])
-        if period_end < datetime.now(timezone.utc):
-            # Expired — update to free
-            await _supabase_upsert_subscription(user_id, {"status": "free"})
-            return {"status": "free"}
 
-    return {"status": sub["status"], "plan": sub.get("plan","pro"), "current_period_end": sub.get("current_period_end"), "workspace_id": sub.get("workspace_id")}
+    # Check expiry — handle both timezone-aware and naive datetimes safely
+    try:
+        if sub["status"] == "active" and sub.get("current_period_end"):
+            period_end = datetime.fromisoformat(sub["current_period_end"])
+            # Make timezone-aware if naive
+            if period_end.tzinfo is None:
+                period_end = period_end.replace(tzinfo=timezone.utc)
+            if period_end < datetime.now(timezone.utc):
+                await _supabase_upsert_subscription(user_id, {"status": "free"})
+                return {"status": "free"}
+    except Exception:
+        pass  # Never let expiry check crash the subscription response
+
+    return {
+        "status":             sub.get("status", "free"),
+        "plan":               sub.get("plan", "pro"),
+        "current_period_end": sub.get("current_period_end"),
+        "workspace_id":       sub.get("workspace_id"),
+    }
 
 
 @router.post("/webhook")
