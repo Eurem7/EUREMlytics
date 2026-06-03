@@ -187,7 +187,7 @@ async def get_subscription(request: Request):
     async with httpx.AsyncClient() as client:
         res = await client.get(
             f"{SUPABASE_URL}/rest/v1/subscriptions",
-            params={"user_id": f"eq.{user_id}", "select": "status,plan,current_period_end,workspace_id"},
+            params={"user_id": f"eq.{user_id}", "select": "status,plan,current_period_end,workspace_id,trial_start"},
             headers={
                 "apikey": SUPABASE_SERVICE_KEY,
                 "Authorization": f"Bearer {SUPABASE_SERVICE_KEY}",
@@ -195,29 +195,53 @@ async def get_subscription(request: Request):
         )
 
     rows = res.json()
-    if not rows:
+    if not isinstance(rows, list) or not rows:
         return {"status": "free"}
 
     sub = rows[0]
 
-    # Check expiry — handle both timezone-aware and naive datetimes safely
+    # ── Trial check ──────────────────────────────────────────
+    trial_start = sub.get("trial_start")
+    if trial_start and sub.get("status") in ("free", "trial"):
+        try:
+            ts = datetime.fromisoformat(trial_start)
+            if ts.tzinfo is None:
+                ts = ts.replace(tzinfo=timezone.utc)
+            trial_end    = ts + timedelta(days=14)
+            now          = datetime.now(timezone.utc)
+            days_left    = (trial_end - now).days
+            if now < trial_end:
+                return {
+                    "status":     "trial",
+                    "plan":       "pro",
+                    "days_left":  max(days_left, 0),
+                    "trial_end":  trial_end.isoformat(),
+                }
+            else:
+                # Trial expired — ensure status is free
+                await _supabase_upsert_subscription(user_id, {"status": "free"})
+                return {"status": "free"}
+        except Exception:
+            pass
+
+    # ── Paid subscription check ───────────────────────────────
     try:
-        if sub["status"] == "active" and sub.get("current_period_end"):
+        if sub.get("status") == "active" and sub.get("current_period_end"):
             period_end = datetime.fromisoformat(sub["current_period_end"])
-            # Make timezone-aware if naive
             if period_end.tzinfo is None:
                 period_end = period_end.replace(tzinfo=timezone.utc)
             if period_end < datetime.now(timezone.utc):
                 await _supabase_upsert_subscription(user_id, {"status": "free"})
                 return {"status": "free"}
     except Exception:
-        pass  # Never let expiry check crash the subscription response
+        pass
 
     return {
         "status":             sub.get("status", "free"),
         "plan":               sub.get("plan", "pro"),
         "current_period_end": sub.get("current_period_end"),
         "workspace_id":       sub.get("workspace_id"),
+        "days_left":          None,
     }
 
 
