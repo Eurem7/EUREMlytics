@@ -1869,7 +1869,7 @@ function UploadScreen({ onUploaded }) {
             Make Your Business Data<br/><em>Reliable in Minutes.</em>
           </h1>
           <p className="upload-sub">
-            Oxdemi automatically cleans, validates, scores, and audits your datasets so you can trust your reports again.
+            Oxdemi automatically cleans, validates, scores, and audits your datasets — so you can trust your reports again.
           </p>
           <div className="upload-features">
             {[
@@ -3210,7 +3210,7 @@ function LandingPage({ onSignUp, onSignIn, onAbout, onPrivacy, onTerms }) {
           <div className="land-plan">
             <div className="land-plan-badge pro">Pro</div>
             <div className="land-plan-price">₦10,000 <span>/month</span></div>
-            <div className="land-plan-desc">For teams and large datasets</div>
+            <div className="land-plan-desc">For individuals and growing businesses</div>
             <div className="land-plan-features">
               <div className="land-plan-feature">Unlimited rows</div>
               <div className="land-plan-feature">All 8 pipeline stages</div>
@@ -3219,7 +3219,7 @@ function LandingPage({ onSignUp, onSignIn, onAbout, onPrivacy, onTerms }) {
               <div className="land-plan-feature">PDF export</div>
               <div className="land-plan-feature">Email summary after clean</div>
             </div>
-            <button className="land-plan-cta pro-btn" onClick={onSignUp}>Start free trial →</button>
+            <button className="land-plan-cta pro-btn" onClick={onSignUp}>Upgrade to Pro →</button>
           </div>
         </div>
       </section>
