@@ -1776,7 +1776,7 @@ function Topbar({ step, sessionId, user, onSignIn, onSignOut, onAccount }) {
     <div className="topbar">
       <div className="topbar-logo">
         <div className="logo-mark">OXD</div>
-        <span className="logo-text">Oxdemi<span>.io</span></span>
+        <span className="logo-text">Oxdemi<span>.com</span></span>
       </div>
       <div className="topbar-divider" />
       <div className="step-track">
@@ -3239,13 +3239,13 @@ function LandingPage({ onSignUp, onSignIn, onAbout, onPrivacy, onTerms }) {
       {/* Footer */}
       <footer className="land-footer">
         <span className="land-footer-brand">
-          <strong>Oxdemi.io</strong> · Raw in. Clean out. · © {new Date().getFullYear()} · Built in Nigeria 🇳🇬
+          <strong>Oxdemi.com</strong> · Raw in. Clean out. · © {new Date().getFullYear()} · Built in Nigeria 🇳🇬
         </span>
         <div className="land-footer-links">
           <button className="land-footer-link" onClick={onAbout}>About</button>
           <button className="land-footer-link" onClick={onPrivacy}>Privacy</button>
           <button className="land-footer-link" onClick={onTerms}>Terms</button>
-          <a className="land-footer-link" href="mailto:hello@oxdemi.io">Contact</a>
+          <a className="land-footer-link" href="mailto:hello@oxdemi.com">Contact</a>
         </div>
       </footer>
 
@@ -3385,9 +3385,9 @@ function AboutModal({ onClose }) {
         {/* Footer strip */}
         <div className="about-footer-strip">
           <span className="about-footer-tag">
-            <strong>Oxdemi.io</strong> · Built in Nigeria 🇳🇬 · Raw in. Clean out.
+            <strong>Oxdemi.com</strong> · Built in Nigeria 🇳🇬 · Raw in. Clean out.
           </span>
-          <a className="about-contact-link" href="mailto:hello@oxdemi.io">hello@oxdemi.io</a>
+          <a className="about-contact-link" href="mailto:hello@oxdemi.com">hello@oxdemi.com</a>
         </div>
 
       </div>
@@ -3401,7 +3401,7 @@ function AboutModal({ onClose }) {
 const PRIVACY_CONTENT = (
   <>
     <h2>Introduction</h2>
-    <p>Oxdemi.io ("we", "us", "our") is a data cleaning service operated in Nigeria. This Privacy Policy explains how we collect, use, and protect your information in accordance with the Nigeria Data Protection Regulation (NDPR) 2019.</p>
+    <p>Oxdemi.com ("we", "us", "our") is a data cleaning service operated in Nigeria. This Privacy Policy explains how we collect, use, and protect your information in accordance with the Nigeria Data Protection Regulation (NDPR) 2019.</p>
     <h2>Data We Collect</h2>
     <ul>
       <li><strong>Account data:</strong> Your email address and authentication provider when you create an account.</li>
@@ -3427,11 +3427,11 @@ const PRIVACY_CONTENT = (
       <li><strong>Vercel</strong> — frontend hosting</li>
     </ul>
     <h2>Your Rights (NDPR)</h2>
-    <p>Under the NDPR, you have the right to access, correct, or delete your personal data. Contact us at <a href="mailto:hello@oxdemi.io">hello@oxdemi.io</a>.</p>
+    <p>Under the NDPR, you have the right to access, correct, or delete your personal data. Contact us at <a href="mailto:hello@oxdemi.com">hello@oxdemi.com</a>.</p>
     <h2>Cookies</h2>
     <p>We use only essential session cookies required for authentication. We do not use advertising or tracking cookies.</p>
     <h2>Contact</h2>
-    <p>For privacy enquiries: <a href="mailto:hello@oxdemi.io">hello@oxdemi.io</a></p>
+    <p>For privacy enquiries: <a href="mailto:hello@oxdemi.com">hello@oxdemi.com</a></p>
     <div className="modal-updated">Last updated: February 2026 · Governed by Nigerian law (NDPR 2019)</div>
   </>
 )
@@ -3439,7 +3439,7 @@ const PRIVACY_CONTENT = (
 const TERMS_CONTENT = (
   <>
     <h2>Acceptance of Terms</h2>
-    <p>By using Oxdemi.io you agree to these Terms of Service. If you do not agree, please do not use the service.</p>
+    <p>By using Oxdemi.com you agree to these Terms of Service. If you do not agree, please do not use the service.</p>
     <h2>The Service</h2>
     <p>Oxdemi provides an automated data cleaning service. You upload CSV or Excel files; our engine normalises, imputes, deduplicates, and scores your data, then returns a cleaned file and quality report.</p>
     <h2>Free Tier</h2>
@@ -3460,8 +3460,8 @@ const TERMS_CONTENT = (
     <h2>Governing Law</h2>
     <p>These terms are governed by the laws of the Federal Republic of Nigeria.</p>
     <h2>Contact</h2>
-    <p>For any queries: <a href="mailto:hello@oxdemi.io">hello@oxdemi.io</a></p>
-    <div className="modal-updated">Last updated: February 2026 · Oxdemi.io, Nigeria</div>
+    <p>For any queries: <a href="mailto:hello@oxdemi.com">hello@oxdemi.com</a></p>
+    <div className="modal-updated">Last updated: February 2026 · Oxdemi.com, Nigeria</div>
   </>
 )
 
@@ -3496,13 +3496,13 @@ function AppFooter({ onPrivacy, onTerms, onAbout }) {
   return (
     <footer className="app-footer">
       <span className="footer-brand">
-        <strong>Oxdemi.io</strong> · Raw in. Clean out. · © {new Date().getFullYear()}
+        <strong>Oxdemi.com</strong> · Raw in. Clean out. · © {new Date().getFullYear()}
       </span>
       <div className="footer-links">
         <button className="footer-link" onClick={onAbout}>About</button>
         <button className="footer-link" onClick={onPrivacy}>Privacy Policy</button>
         <button className="footer-link" onClick={onTerms}>Terms of Service</button>
-        <a className="footer-link" href="mailto:hello@oxdemi.io">Contact</a>
+        <a className="footer-link" href="mailto:hello@oxdemi.com">Contact</a>
       </div>
     </footer>
   )
