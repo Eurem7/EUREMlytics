@@ -110,13 +110,23 @@ def clean_data(
         )
         rows_data = r.json() if r.status_code == 200 else []
         is_active = False
-        if rows_data:
-            from datetime import datetime, timezone
+        if isinstance(rows_data, list) and rows_data:
+            from datetime import datetime, timezone, timedelta
             sub = rows_data[0]
             if sub.get("status") == "active":
                 period_end = sub.get("current_period_end")
                 if period_end:
-                    is_active = datetime.fromisoformat(period_end) > datetime.now(timezone.utc)
+                    pe = datetime.fromisoformat(period_end)
+                    if pe.tzinfo is None: pe = pe.replace(tzinfo=timezone.utc)
+                    is_active = pe > datetime.now(timezone.utc)
+                else:
+                    is_active = True
+            elif sub.get("status") == "trial":
+                trial_start = sub.get("trial_start")
+                if trial_start:
+                    ts = datetime.fromisoformat(trial_start)
+                    if ts.tzinfo is None: ts = ts.replace(tzinfo=timezone.utc)
+                    is_active = datetime.now(timezone.utc) < ts + timedelta(days=14)
                 else:
                     is_active = True
         if not is_active:
@@ -147,6 +157,43 @@ def clean_data(
     cleaned_df = result["cleaned_dataframe"]
     safe_cleaned = _safe_rows(cleaned_df.to_dict(orient="records"))
     safe_raw     = _safe_rows(raw_preview)
+
+    # ── Start trial on first clean ────────────────────────────
+    # If user has no subscription row yet, create one with trial_start = now
+    try:
+        user = _get_user(request)
+        if user:
+            uid = user.get("sub", "")
+            # Check if subscription already exists
+            existing = httpx.get(
+                f"{SUPABASE_URL}/rest/v1/subscriptions",
+                params={"user_id": f"eq.{uid}", "select": "status,trial_start"},
+                headers={"apikey": SUPABASE_SERVICE_KEY,
+                         "Authorization": f"Bearer {SUPABASE_SERVICE_KEY}"},
+                timeout=5.0,
+            )
+            rows_ex = existing.json() if existing.status_code == 200 else []
+            # Only start trial if no subscription row exists yet
+            if isinstance(rows_ex, list) and not rows_ex:
+                from datetime import datetime, timezone
+                httpx.post(
+                    f"{SUPABASE_URL}/rest/v1/subscriptions",
+                    json={
+                        "user_id":     uid,
+                        "status":      "trial",
+                        "plan":        "pro",
+                        "trial_start": datetime.now(timezone.utc).isoformat(),
+                    },
+                    headers={
+                        "apikey": SUPABASE_SERVICE_KEY,
+                        "Authorization": f"Bearer {SUPABASE_SERVICE_KEY}",
+                        "Content-Type": "application/json",
+                        "Prefer": "return=minimal",
+                    },
+                    timeout=5.0,
+                )
+    except Exception:
+        pass  # Never block a clean over trial activation
 
     # ── Auto-publish permanent report to Supabase ──
     share_token = None
