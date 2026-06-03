@@ -1869,7 +1869,7 @@ function UploadScreen({ onUploaded }) {
             Make Your Business Data<br/><em>Reliable in Minutes.</em>
           </h1>
           <p className="upload-sub">
-            Oxdemi automatically cleans, validates, scores, and audits your datasets — so you can trust your reports again.
+            Oxdemi automatically cleans, validates, scores, and audits your datasets so you can trust your reports again.
           </p>
           <div className="upload-features">
             {[
