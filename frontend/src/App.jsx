@@ -1972,6 +1972,26 @@ function UploadScreen({ onUploaded }) {
               </div>
             </>
           )}
+
+          {/* Privacy reassurance */}
+          <div style={{
+            display: 'flex', alignItems: 'center', justifyContent: 'center',
+            gap: '0.5rem', marginTop: '1.25rem',
+            padding: '0.65rem 1rem',
+            background: 'var(--bg)',
+            border: '1px solid var(--border)',
+            borderRadius: 'var(--r)',
+            fontSize: '0.72rem',
+            color: 'var(--text3)',
+            lineHeight: 1.4,
+          }}>
+            <span style={{fontSize: '0.9rem', flexShrink: 0}}>🔒</span>
+            <span>
+              <strong style={{color: 'var(--text2)', fontWeight: 600}}>We never store your raw data.</strong>
+              {' '}Your file is deleted the moment cleaning is done.
+            </span>
+          </div>
+
         </div>
       </div>
     </div>
