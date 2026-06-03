@@ -1992,6 +1992,25 @@ function UploadScreen({ onUploaded }) {
             </span>
           </div>
 
+          {/* Trial awareness */}
+          <div style={{
+            display: 'flex', alignItems: 'center', justifyContent: 'center',
+            gap: '0.5rem', marginTop: '0.65rem',
+            padding: '0.65rem 1rem',
+            background: 'rgba(99,102,241,0.06)',
+            border: '1px solid rgba(99,102,241,0.18)',
+            borderRadius: 'var(--r)',
+            fontSize: '0.72rem',
+            color: 'var(--text3)',
+            lineHeight: 1.4,
+          }}>
+            <span style={{fontSize: '0.9rem', flexShrink: 0}}>✨</span>
+            <span>
+              <strong style={{color: 'var(--text2)', fontWeight: 600}}>New?</strong>
+              {' '}You get 14 days of full Pro access free. No card required.
+            </span>
+          </div>
+
         </div>
       </div>
     </div>
