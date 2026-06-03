@@ -165,10 +165,13 @@ export default function UserDashboard({ user, onBack, onUpgrade }) {
     finally  { setCreatingWs(false) }
   }
 
+  const isTrial  = sub?.status === 'trial'
   const isActive = sub?.status === 'active'
+  const isProAccess = isActive || isTrial   // full Pro features
   const plan     = sub?.plan || 'free'
   const isTeam   = isActive && plan === 'team'
   const isPro    = isActive && plan === 'pro'
+  const daysLeft = sub?.days_left ?? null
   const periodEnd = sub?.current_period_end
     ? new Date(sub.current_period_end).toLocaleDateString('en-NG', { day:'numeric', month:'long', year:'numeric' })
     : null
@@ -186,6 +189,41 @@ export default function UserDashboard({ user, onBack, onUpgrade }) {
           <div className="udash-title">Your Dashboard</div>
           <div className="udash-sub">{user?.email}</div>
         </div>
+
+        {/* Trial banner */}
+        {isTrial && (
+          <div style={{
+            background: daysLeft <= 3 ? 'rgba(220,53,69,0.08)' : 'rgba(99,102,241,0.08)',
+            border: `1px solid ${daysLeft <= 3 ? 'rgba(220,53,69,0.25)' : 'rgba(99,102,241,0.25)'}`,
+            borderRadius: 'var(--r2)', padding: '0.85rem 1.25rem',
+            marginBottom: '1rem',
+            display: 'flex', alignItems: 'center', justifyContent: 'space-between',
+            gap: '1rem', flexWrap: 'wrap',
+          }}>
+            <div style={{display:'flex', alignItems:'center', gap:'0.65rem'}}>
+              <span style={{fontSize:'1.1rem'}}>{daysLeft <= 3 ? '⚠️' : '🎉'}</span>
+              <div>
+                <div style={{fontWeight:700, fontSize:'0.82rem', color:'var(--text)'}}>
+                  {daysLeft <= 0
+                    ? 'Your free trial has ended'
+                    : daysLeft === 1
+                    ? 'Last day of your free trial'
+                    : `${daysLeft} days left in your free trial`}
+                </div>
+                <div style={{fontSize:'0.7rem', color:'var(--text3)', marginTop:'0.15rem'}}>
+                  You have full Pro access — unlimited rows, PDF export, file history
+                </div>
+              </div>
+            </div>
+            <button
+              className="btn btn-primary"
+              style={{fontSize:'0.75rem', height:'32px', padding:'0 1rem', flexShrink:0}}
+              onClick={handleUpgrade}
+            >
+              Upgrade to Pro →
+            </button>
+          </div>
+        )}
 
         <div className="udash-tabs">
           {[['account','👤 Account'],['workspace','👥 Team'],['history','📁 History']].map(([t,label]) => (
@@ -205,14 +243,15 @@ export default function UserDashboard({ user, onBack, onUpgrade }) {
                     </div>
                     <div>
                       <div className="sub-plan">{isTeam?'Team Plan':isPro?'Pro Plan':'Free Plan'}</div>
-                      <div className="sub-detail">{isActive ? (periodEnd ? `Renews ${periodEnd}` : 'Active') : 'Up to 500 rows per file'}</div>
+                      <div className="sub-detail">{isActive ? (periodEnd ? `Renews ${periodEnd}` : 'Active') : isTrial ? `Trial ends in ${daysLeft} days` : 'Up to 500 rows per file'}</div>
                     </div>
                   </div>
                   <div style={{display:'flex',alignItems:'center',gap:'0.75rem'}}>
-                    <span className={`sub-badge ${isTeam?'team':isActive?'active':'free'}`}>
-                      {isTeam?'Team':isPro?'Pro':'Free'}
+                    <span className={`sub-badge ${isTeam?'team':isActive?'active':isTrial?'active':'free'}`}>
+                      {isTeam?'Team':isActive?'Pro':isTrial?'Trial':'Free'}
                     </span>
-                    {!isActive && <button className="udash-upgrade" onClick={handleUpgrade}>Upgrade →</button>}
+                    {(!isActive && !isTrial) && <button className="udash-upgrade" onClick={handleUpgrade}>Upgrade →</button>}
+                    {isTrial && <button className="udash-upgrade" onClick={handleUpgrade}>Upgrade to Pro →</button>}
                   </div>
                 </div>
 
@@ -234,7 +273,7 @@ export default function UserDashboard({ user, onBack, onUpgrade }) {
 
                 <div className="udash-stats">
                   <div className="udash-stat">
-                    <div className="udash-stat-val">{isActive?'∞':'500'}</div>
+                    <div className="udash-stat-val">{isProAccess?'∞':'500'}</div>
                     <div className="udash-stat-lbl">Row limit</div>
                   </div>
                   <div className="udash-stat">
@@ -409,7 +448,7 @@ export default function UserDashboard({ user, onBack, onUpgrade }) {
                     </div>
                   ))
                 }
-                {!isActive && history.length >= 10 && (
+                {!isProAccess && history.length >= 10 && (
                   <div style={{padding:'0.85rem 1.25rem',fontSize:'0.7rem',color:'var(--text3)',textAlign:'center'}}>
                     Upgrade to Pro to see your full history.
                   </div>
